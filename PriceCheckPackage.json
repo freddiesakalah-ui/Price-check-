@@ -1,0 +1,13 @@
+JSON
+{
+  "name": "price-check-webhook",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "airtable": "^0.12.2",
+    "express": "^4.19.2"
+  }
+}

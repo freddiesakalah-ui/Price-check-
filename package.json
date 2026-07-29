@@ -5,7 +5,7 @@ JSON
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
-  }
+  },
   "dependencies": {
     "airtable": "^0.12.2",
     "express": "^4.19.2"

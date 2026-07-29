@@ -2,13 +2,12 @@ const express = require("express");
 const Airtable = require("airtable");
 
 const app = express();
-
 app.use(express.json());
 
 /*
-=========================================================
+====================================================
  Airtable Configuration
-=========================================================
+====================================================
 */
 
 const base = new Airtable({
@@ -16,21 +15,20 @@ const base = new Airtable({
 }).base(process.env.AIRTABLE_BASE_ID);
 
 /*
-=========================================================
+====================================================
  Helper Function
- Escapes quotation marks inside Airtable formulas
-=========================================================
+====================================================
 */
 
 function escapeFormula(value) {
   if (!value) return "";
-  return String(value).replace(/"/g, '\\"');
+  return String(value).trim().replace(/"/g, '\\"');
 }
 
 /*
-=========================================================
+====================================================
  Health Check
-=========================================================
+====================================================
 */
 
 app.get("/", (req, res) => {
@@ -38,86 +36,74 @@ app.get("/", (req, res) => {
 });
 
 /*
-=========================================================
+====================================================
  Dialogflow CX Webhook
-=========================================================
+====================================================
 */
 
 app.post("/webhook", async (req, res) => {
   try {
-
-    //-----------------------------------------------------
-    // Read session parameters
-    //-----------------------------------------------------
+    //--------------------------------------------
+    // Read Dialogflow Parameters
+    //--------------------------------------------
 
     const params = req.body.sessionInfo?.parameters || {};
 
-    const product =
-      escapeFormula(params.product);
+    const product = escapeFormula(params.product);
+    const city = escapeFormula(params.city);
+    const subLocation = escapeFormula(params.sub_location);
+    const brand = escapeFormula(params.brand || "Any");
 
-    const city =
-      escapeFormula(params.city);
-
-    const subLocation =
-      escapeFormula(params.sub_location);
-
-    const brand =
-      escapeFormula(params.brand || "Any");
-
-    //-----------------------------------------------------
-    // Validate required parameters
-    //-----------------------------------------------------
+    //--------------------------------------------
+    // Validate Parameters
+    //--------------------------------------------
 
     if (!product || !city || !subLocation) {
-
       return res.json({
         fulfillmentResponse: {
           messages: [
             {
               text: {
                 text: [
-                  "Please provide Product, City and Area."
+                  "Please provide a product, city and area before searching."
                 ]
               }
             }
           ]
         }
       });
-
     }
 
-    //-----------------------------------------------------
+    //--------------------------------------------
     // Build Airtable Formula
-    //-----------------------------------------------------
+    //--------------------------------------------
 
     let conditions = [
-
       `FIND(LOWER("${product}"), LOWER({Product Name}))`,
-
-      `LOWER({City})=LOWER("${city}")`,
-
-      `LOWER({Sub-location})=LOWER("${subLocation}")`
-
+      `LOWER({City}) = LOWER("${city}")`,
+      `LOWER({Sub-location}) = LOWER("${subLocation}")`
     ];
 
-    if (
-      brand &&
-      brand.toLowerCase() !== "any"
-    ) {
+    if (brand.toLowerCase() !== "any") {
       conditions.push(
-        `LOWER({Brand})=LOWER("${brand}")`
+        `LOWER({Brand}) = LOWER("${brand}")`
       );
     }
 
-    const formula =
-      `AND(${conditions.join(",")})`;
+    const formula = `AND(${conditions.join(",")})`;
 
-    console.log("Formula:");
-    console.log(formula);
+    console.log("=================================");
+    console.log("Incoming Search");
+    console.log("Product:", product);
+    console.log("Brand:", brand);
+    console.log("City:", city);
+    console.log("Area:", subLocation);
+    console.log("Formula:", formula);
+    console.log("=================================");
 
-    //-----------------------------------------------------
-    // Query Airtable
-    //-----------------------------------------------------
+    //--------------------------------------------
+    // Airtable Query
+    //--------------------------------------------
 
     const records = await base("Prices")
       .select({
@@ -125,50 +111,119 @@ app.post("/webhook", async (req, res) => {
         sort: [
           {
             field: "Price",
-            direction: "asc",
-          },
-        ],
+            direction: "asc"
+          }
+        ]
       })
       .firstPage();
 
-    //-----------------------------------------------------
+    //--------------------------------------------
     // No Results
-    //-----------------------------------------------------
+    //--------------------------------------------
 
     if (records.length === 0) {
-
       return res.json({
         fulfillmentResponse: {
           messages: [
             {
               text: {
                 text: [
-                  `❌ No prices found for ${brand !== "Any" ? brand + " " : ""}${product} in ${subLocation}, ${city}.`
+                  `No prices found for ${brand !== "Any" ? brand + " " : ""}${product} in ${subLocation}, ${city}.`
                 ]
               }
             }
           ]
         }
       });
-
     }
 
-    //-----------------------------------------------------
+    //--------------------------------------------
     // Build Response
-    //-----------------------------------------------------
+    //--------------------------------------------
 
-    let response =
-`📊 Price Comparison
+    let responseText = "";
 
-Product: ${records[0].get("Product Name")}
+    responseText += "📊 PRICE COMPARISON\n\n";
 
-Brand: ${brand}
+    responseText += `Product: ${records[0].get("Product Name")}\n`;
 
-Location: ${subLocation}, ${city}
+    if (brand.toLowerCase() !== "any") {
+      responseText += `Brand: ${records[0].get("Brand")}\n`;
+    }
 
-`;
+    responseText += `Location: ${subLocation}, ${city}\n\n`;
 
-    const medals = [
-      "🥇",
-  console.log(`Server listening on port ${PORT}`)
+    const medals = ["🥇", "🥈", "🥉"];
+
+    records.forEach((record, index) => {
+
+      const medal = medals[index] || "🔹";
+
+      const shop = record.get("Shop Name") || "Unknown Shop";
+
+      const price = Number(record.get("Price") || 0).toFixed(2);
+
+      responseText += `${medal} ${shop} - $${price}`;
+
+      if (index === 0) {
+        responseText += " (Cheapest)";
+      }
+
+      responseText += "\n";
+    });
+
+    //--------------------------------------------
+    // Return to Dialogflow
+    //--------------------------------------------
+
+    return res.json({
+      fulfillmentResponse: {
+        messages: [
+          {
+            text: {
+              text: [responseText]
+            }
+          }
+        ]
+      }
+    });
+
+  } catch (error) {
+
+    console.error("===============================");
+    console.error("WEBHOOK ERROR");
+    console.error(error);
+    console.error("===============================");
+
+    return res.json({
+      fulfillmentResponse: {
+        messages: [
+          {
+            text: {
+              text: [
+                "Sorry, something went wrong while retrieving supermarket prices."
+              ]
+            }
+          }
+        ]
+      }
+    });
+
+  }
+});
+
+/*
+====================================================
+ Start Server
+====================================================
+*/
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("==================================");
+  console.log(`Server listening on port ${PORT}`);
+  console.log("Webhook server is running!");
+  console.log("==================================");
+});
 

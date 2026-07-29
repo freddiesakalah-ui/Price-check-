@@ -23,9 +23,19 @@ app.post("/webhook", async (req, res) => {
   const brand = sessionParameters.brand;
 
   try {
-    let formula = `AND( FIND(LOWER("${product}"), LOWER({Product Name})), LOWER({City}) = LOWER("${city}"), LOWER({Sub-location}) = LOWER("${subLocation}") )`;
+    let conditions = [
+  `FIND(LOWER("${product}"), LOWER({Product Name}))`,
+  `LOWER({City}) = LOWER("${city}")`,
+  `LOWER({Sub-location}) = LOWER("${subLocation}")`
+];
 
-    if (brand && brand.toLowerCase() !== "any") {
+if (brand && brand.toLowerCase() !== "any") {
+  conditions.push(
+    `LOWER({Brand}) = LOWER("${brand}")`
+  );
+}
+
+const formula = `AND(${conditions.join(",")})`; {
       formula = `AND(${formula}, LOWER({Brand}) = LOWER("${brand}"))`;
     }
 

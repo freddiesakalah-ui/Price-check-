@@ -171,4 +171,4 @@ Location: ${subLocation}, ${city}
     const medals = [
       "🥇",
   console.log(`Server listening on port ${PORT}`)
-});
+})

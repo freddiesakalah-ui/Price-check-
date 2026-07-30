@@ -1,229 +1,92 @@
-const express = require("express");
-const Airtable = require("airtable");
+const express = require('express');
+const Airtable = require('airtable');
 
 const app = express();
 app.use(express.json());
 
-/*
-====================================================
- Airtable Configuration
-====================================================
-*/
+// Initialize Airtable using environment variables set on Render
+const base = new Airtable({ apiKey: process.env.AIRTABLE_ACCESS_TOKEN }).base(process.env.AIRTABLE_BASE_ID);
 
-const base = new Airtable({
-  apiKey: process.env.AIRTABLE_ACCESS_TOKEN,
-}).base(process.env.AIRTABLE_BASE_ID);
-
-/*
-====================================================
- Helper Function
-====================================================
-*/
-
-function escapeFormula(value) {
-  if (!value) return "";
-  return String(value).trim().replace(/"/g, '\\"');
-}
-
-/*
-====================================================
- Health Check
-====================================================
-*/
-
-app.get("/", (req, res) => {
-  res.send("Webhook server is running! 🚀");
+// Health check endpoint
+app.get('/', (req, res) => {
+  res.send('Webhook server is running! 🚀');
 });
 
-/*
-====================================================
- Dialogflow CX Webhook
-====================================================
-*/
+// Main Dialogflow CX Webhook Route
+app.post('/webhook', async (req, res) => {
+  const sessionParameters = req.body.sessionInfo?.parameters || {};
+  const product = sessionParameters.product || '';
+  const city = sessionParameters.city || '';
+  const subLocation = sessionParameters.sub_location || '';
+  const brand = sessionParameters.brand || '';
 
-app.post("/webhook", async (req, res) => {
   try {
-    //--------------------------------------------
-    // Read Dialogflow Parameters
-    //--------------------------------------------
-
-    const params = req.body.sessionInfo?.parameters || {};
-
-    const product = escapeFormula(params.product);
-    const city = escapeFormula(params.city);
-    const subLocation = escapeFormula(params.sub_location);
-    const brand = escapeFormula(params.brand || "Any");
-
-    //--------------------------------------------
-    // Validate Parameters
-    //--------------------------------------------
-
-    if (!product || !city || !subLocation) {
-      return res.json({
-        fulfillmentResponse: {
-          messages: [
-            {
-              text: {
-                text: [
-                  "Please provide a product, city and area before searching."
-                ]
-              }
-            }
-          ]
-        }
-      });
-    }
-
-    //--------------------------------------------
-    // Build Airtable Formula
-    //--------------------------------------------
-
-    let conditions = [
-      `FIND(LOWER("${product}"), LOWER({Product Name}))`,
-      `LOWER({City}) = LOWER("${city}")`,
-      `LOWER({Sub-location}) = LOWER("${subLocation}")`
+    // Formula Breakdown:
+    // 1. {Product} linked record matches user product query
+    // 2. {Location} linked record matches city
+    // 3. {Availability} must be 'In Stock'
+    // 4. {Outdated Flag} must be 'NO'
+    let formulaConditions = [
+      `FIND(LOWER("${product}"), LOWER(ARRAYJOIN({Product}, "")))`,
+      `FIND(LOWER("${city}"), LOWER(ARRAYJOIN({Location}, "")))`,
+      `{Availability} = 'In Stock'`,
+      `{Outdated Flag} = 'NO'`
     ];
 
-    if (brand.toLowerCase() !== "any") {
-      conditions.push(
-        `LOWER({Brand}) = LOWER("${brand}")`
-      );
+    if (subLocation) {
+      formulaConditions.push(`FIND(LOWER("${subLocation}"), LOWER(ARRAYJOIN({Location}, "")))`);
     }
 
-    const formula = `AND(${conditions.join(",")})`;
-
-    console.log("=================================");
-    console.log("Incoming Search");
-    console.log("Product:", product);
-    console.log("Brand:", brand);
-    console.log("City:", city);
-    console.log("Area:", subLocation);
-    console.log("Formula:", formula);
-    console.log("=================================");
-
-    //--------------------------------------------
-    // Airtable Query
-    //--------------------------------------------
-
-    const records = await base("Prices")
-      .select({
-        filterByFormula: formula,
-        sort: [
-          {
-            field: "Price",
-            direction: "asc"
-          }
-        ]
-      })
-      .firstPage();
-
-    //--------------------------------------------
-    // No Results
-    //--------------------------------------------
-
-    if (records.length === 0) {
-      return res.json({
-        fulfillmentResponse: {
-          messages: [
-            {
-              text: {
-                text: [
-                  `No prices found for ${brand !== "Any" ? brand + " " : ""}${product} in ${subLocation}, ${city}.`
-                ]
-              }
-            }
-          ]
-        }
-      });
+    if (brand && brand.toLowerCase() !== 'any') {
+      formulaConditions.push(`FIND(LOWER("${brand}"), LOWER(ARRAYJOIN({Product}, "")))`);
     }
 
-    //--------------------------------------------
-    // Build Response
-    //--------------------------------------------
+    const formula = `AND(${formulaConditions.join(', ')})`;
+
+    const records = await base('Prices').select({
+      filterByFormula: formula,
+      sort: [{ field: 'Price USD', direction: 'asc' }]
+    }).firstPage();
 
     let responseText = "";
 
-    responseText += "📊 PRICE COMPARISON\n\n";
+    if (!records || records.length === 0) {
+      const brandPrefix = (brand && brand.toLowerCase() !== 'any') ? `${brand} ` : '';
+      responseText = `❌ Sorry, no live in-stock prices found for **${brandPrefix}${product}** in ${subLocation ? subLocation + ', ' : ''}${city}.`;
+    } else {
+      const locationLabel = subLocation ? `${subLocation}, ${city}` : city;
+      const brandTitle = (brand && brand.toLowerCase() !== 'any') ? `${brand} ` : '';
+      responseText = `📊 **Price Comparison: ${brandTitle}${product}**\n📍 *${locationLabel}*\n\n`;
+      const medals = ['🥇', '🥈', '🥉'];
 
-    responseText += `Product: ${records[0].get("Product Name")}\n`;
+      records.forEach((record, index) => {
+        const medal = medals[index] || '🔹';
+        const rawShop = record.get('Shop');
+        const shop = Array.isArray(rawShop) ? rawShop[0] : (rawShop || 'Store');
+        const price = record.get('Price USD') || 0;
 
-    if (brand.toLowerCase() !== "any") {
-      responseText += `Brand: ${records[0].get("Brand")}\n`;
+        responseText += `${medal} **${shop}:** $${Number(price).toFixed(2)}${index === 0 ? ' (Cheapest! 🎉)' : ''}\n`;
+      });
     }
 
-    responseText += `Location: ${subLocation}, ${city}\n\n`;
-
-    const medals = ["🥇", "🥈", "🥉"];
-
-    records.forEach((record, index) => {
-
-      const medal = medals[index] || "🔹";
-
-      const shop = record.get("Shop Name") || "Unknown Shop";
-
-      const price = Number(record.get("Price") || 0).toFixed(2);
-
-      responseText += `${medal} ${shop} - $${price}`;
-
-      if (index === 0) {
-        responseText += " (Cheapest)";
-      }
-
-      responseText += "\n";
-    });
-
-    //--------------------------------------------
-    // Return to Dialogflow
-    //--------------------------------------------
-
-    return res.json({
+    res.status(200).json({
       fulfillmentResponse: {
-        messages: [
-          {
-            text: {
-              text: [responseText]
-            }
-          }
-        ]
+        messages: [{ text: { text: [responseText] } }]
       }
     });
 
   } catch (error) {
-
-    console.error("===============================");
-    console.error("WEBHOOK ERROR");
-    console.error(error);
-    console.error("===============================");
-
-    return res.json({
+    console.error("Webhook Execution Error:", error);
+    res.status(200).json({
       fulfillmentResponse: {
-        messages: [
-          {
-            text: {
-              text: [
-                "Sorry, something went wrong while retrieving supermarket prices."
-              ]
-            }
-          }
-        ]
+        messages: [{ text: { text: ["⚠️ System error while fetching prices. Please try again later."] } }]
       }
     });
-
   }
 });
 
-/*
-====================================================
- Start Server
-====================================================
-*/
-
 const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, () => {
-  console.log("==================================");
   console.log(`Server listening on port ${PORT}`);
-  console.log("Webhook server is running!");
-  console.log("==================================");
 });
 

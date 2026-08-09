@@ -21,7 +21,7 @@ app.post('/webhook', async (req, res) => {
   const brand = sessionParameters.brand || '';
 
   try {
-    // 1. Mandatory base conditions matching your Airtable column names & constraints
+    // Core search conditions across Prices, Location, and Product
     let formulaConditions = [
       `FIND(LOWER("${product}"), LOWER(ARRAYJOIN({Product}, "")))`,
       `FIND(LOWER("${city}"), LOWER(ARRAYJOIN({Location}, "")))`,
@@ -29,19 +29,14 @@ app.post('/webhook', async (req, res) => {
       `{Outdated Flag} = 'NO'`
     ];
 
-    // 2. Add sub-location filter if user provided it
+    // Add sub_location check if provided by user
     if (subLocation) {
       formulaConditions.push(`FIND(LOWER("${subLocation}"), LOWER(ARRAYJOIN({Location}, "")))`);
     }
 
-    // 3. Add brand filter if user provided it (and it's not 'any')
-    if (brand && brand.toLowerCase() !== 'any') {
-      formulaConditions.push(`FIND(LOWER("${brand}"), LOWER(ARRAYJOIN({Product}, "")))`);
-    }
-
     const formula = `AND(${formulaConditions.join(', ')})`;
 
-    // Query Airtable Prices table sorted by price ascending
+    // Fetch matching price records sorted by price ascending
     const records = await base('Prices').select({
       filterByFormula: formula,
       sort: [{ field: 'Price USD', direction: 'asc' }]
@@ -69,7 +64,6 @@ app.post('/webhook', async (req, res) => {
       });
     }
 
-    // Send formatted message back to Dialogflow CX
     res.status(200).json({
       fulfillmentResponse: {
         messages: [{ text: { text: [responseText] } }]
@@ -90,4 +84,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
-
+ 

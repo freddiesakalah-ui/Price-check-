@@ -4,39 +4,34 @@ const Airtable = require('airtable');
 const app = express();
 app.use(express.json());
 
-// Initialize Airtable using environment variables set on Render
 const base = new Airtable({ apiKey: process.env.AIRTABLE_ACCESS_TOKEN }).base(process.env.AIRTABLE_BASE_ID);
 
-// Health check endpoint
 app.get('/', (req, res) => {
   res.send('Webhook server is running! 🚀');
 });
 
-// Main Dialogflow CX Webhook Route
 app.post('/webhook', async (req, res) => {
   const sessionParameters = req.body.sessionInfo?.parameters || {};
-  const product = sessionParameters.product || '';
-  const city = sessionParameters.city || '';
-  const subLocation = sessionParameters.sub_location || '';
-  const brand = sessionParameters.brand || '';
+  const product = (sessionParameters.product || '').trim();
+  const city = (sessionParameters.city || '').trim();
+  const subLocation = (sessionParameters.sub_location || '').trim();
+  const brand = (sessionParameters.brand || '').trim();
 
   try {
-    // Core search conditions across Prices, Location, and Product
+    // Build formula conditions checking text arrays cleanly
     let formulaConditions = [
-      `FIND(LOWER("${product}"), LOWER(ARRAYJOIN({Product}, "")))`,
-      `FIND(LOWER("${city}"), LOWER(ARRAYJOIN({Location}, "")))`,
+      `FIND(LOWER("${product}"), LOWER(ARRAYJOIN({Product} & "")))`,
+      `FIND(LOWER("${city}"), LOWER(ARRAYJOIN({city} & "")))`,
       `{Availability} = 'In Stock'`,
       `{Outdated Flag} = 'NO'`
     ];
 
-    // Add sub_location check if provided by user
     if (subLocation) {
-      formulaConditions.push(`FIND(LOWER("${subLocation}"), LOWER(ARRAYJOIN({Location}, "")))`);
+      formulaConditions.push(`FIND(LOWER("${subLocation}"), LOWER(ARRAYJOIN({sub_location} & "")))`);
     }
 
     const formula = `AND(${formulaConditions.join(', ')})`;
 
-    // Fetch matching price records sorted by price ascending
     const records = await base('Prices').select({
       filterByFormula: formula,
       sort: [{ field: 'Price USD', direction: 'asc' }]
@@ -84,4 +79,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
- 
+

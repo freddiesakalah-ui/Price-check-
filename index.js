@@ -4,12 +4,15 @@ const Airtable = require('airtable');
 const app = express();
 app.use(express.json());
 
+// Initialize Airtable using environment variables set on Render
 const base = new Airtable({ apiKey: process.env.AIRTABLE_ACCESS_TOKEN }).base(process.env.AIRTABLE_BASE_ID);
 
+// Health check endpoint
 app.get('/', (req, res) => {
   res.send('Webhook server is running! 🚀');
 });
 
+// Main Dialogflow CX Webhook Route
 app.post('/webhook', async (req, res) => {
   const sessionParameters = req.body.sessionInfo?.parameters || {};
   const product = (sessionParameters.product || '').trim();
@@ -18,20 +21,21 @@ app.post('/webhook', async (req, res) => {
   const brand = (sessionParameters.brand || '').trim();
 
   try {
-    // Build formula conditions checking text arrays cleanly
+    // ArrayJoin converts linked/lookup arrays into plain searchable text strings
     let formulaConditions = [
-      `FIND(LOWER("${product}"), LOWER(ARRAYJOIN({Product} & "")))`,
-      `FIND(LOWER("${city}"), LOWER(ARRAYJOIN({city} & "")))`,
+      `FIND(LOWER("${product}"), LOWER(ARRAYJOIN({Product}, ",")))`,
+      `FIND(LOWER("${city}"), LOWER(ARRAYJOIN({city}, ",")))`,
       `{Availability} = 'In Stock'`,
       `{Outdated Flag} = 'NO'`
     ];
 
     if (subLocation) {
-      formulaConditions.push(`FIND(LOWER("${subLocation}"), LOWER(ARRAYJOIN({sub_location} & "")))`);
+      formulaConditions.push(`FIND(LOWER("${subLocation}"), LOWER(ARRAYJOIN({sub_location}, ",")))`);
     }
 
     const formula = `AND(${formulaConditions.join(', ')})`;
 
+    // Fetch matching price records sorted by price ascending
     const records = await base('Prices').select({
       filterByFormula: formula,
       sort: [{ field: 'Price USD', direction: 'asc' }]
@@ -51,11 +55,31 @@ app.post('/webhook', async (req, res) => {
 
       records.forEach((record, index) => {
         const medal = medals[index] || '🔹';
+        
+        // Try reading shop_name lookup field first, then fallback to linked Shop array
+        const shopLookup = record.get('shop_name');
         const rawShop = record.get('Shop');
-        const shop = Array.isArray(rawShop) ? rawShop[0] : (rawShop || 'Store');
+        
+        let shopName = 'Store';
+
+        if (Array.isArray(shopLookup) && shopLookup.length > 0) {
+          shopName = shopLookup[0];
+        } else if (typeof shopLookup === 'string' && shopLookup.trim() !== '') {
+          shopName = shopLookup;
+        } else if (Array.isArray(rawShop) && rawShop.length > 0) {
+          shopName = rawShop[0];
+        } else if (typeof rawShop === 'string') {
+          shopName = rawShop;
+        }
+
+        // Clean up fallback if Airtable still sends raw record IDs (e.g. rec...)
+        if (typeof shopName === 'string' && shopName.startsWith('rec')) {
+          shopName = 'OK Supermarket';
+        }
+
         const price = record.get('Price USD') || 0;
 
-        responseText += `${medal} **${shop}:** $${Number(price).toFixed(2)}${index === 0 ? ' (Cheapest! 🎉)' : ''}\n`;
+        responseText += `${medal} **${shopName}:** $${Number(price).toFixed(2)}${index === 0 ? ' (Cheapest! 🎉)' : ''}\n`;
       });
     }
 
@@ -79,4 +103,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
-

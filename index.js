@@ -4,15 +4,12 @@ const Airtable = require('airtable');
 const app = express();
 app.use(express.json());
 
-// Initialize Airtable using environment variables set on Render
 const base = new Airtable({ apiKey: process.env.AIRTABLE_ACCESS_TOKEN }).base(process.env.AIRTABLE_BASE_ID);
 
-// Health check endpoint
 app.get('/', (req, res) => {
   res.send('Webhook server is running! 🚀');
 });
 
-// Main Dialogflow CX Webhook Route
 app.post('/webhook', async (req, res) => {
   const sessionParameters = req.body.sessionInfo?.parameters || {};
   const product = (sessionParameters.product || '').trim();
@@ -21,7 +18,6 @@ app.post('/webhook', async (req, res) => {
   const brand = (sessionParameters.brand || '').trim();
 
   try {
-    // ArrayJoin converts linked/lookup arrays into plain searchable text strings
     let formulaConditions = [
       `FIND(LOWER("${product}"), LOWER(ARRAYJOIN({Product}, ",")))`,
       `FIND(LOWER("${city}"), LOWER(ARRAYJOIN({city}, ",")))`,
@@ -35,7 +31,6 @@ app.post('/webhook', async (req, res) => {
 
     const formula = `AND(${formulaConditions.join(', ')})`;
 
-    // Fetch matching price records sorted by price ascending
     const records = await base('Prices').select({
       filterByFormula: formula,
       sort: [{ field: 'Price USD', direction: 'asc' }]
@@ -56,11 +51,11 @@ app.post('/webhook', async (req, res) => {
       records.forEach((record, index) => {
         const medal = medals[index] || '🔹';
         
-        // Try reading shop_name lookup field first, then fallback to linked Shop array
+        // Extract shop text cleanly from shop_name lookup or primary Shop field
         const shopLookup = record.get('shop_name');
         const rawShop = record.get('Shop');
         
-        let shopName = 'Store';
+        let shopName = '';
 
         if (Array.isArray(shopLookup) && shopLookup.length > 0) {
           shopName = shopLookup[0];
@@ -72,9 +67,9 @@ app.post('/webhook', async (req, res) => {
           shopName = rawShop;
         }
 
-        // Clean up fallback if Airtable still sends raw record IDs (e.g. rec...)
-        if (typeof shopName === 'string' && shopName.startsWith('rec')) {
-          shopName = 'OK Supermarket';
+        // Final fallback only if no record name was retrieved
+        if (!shopName || shopName.startsWith('rec')) {
+          shopName = 'Store';
         }
 
         const price = record.get('Price USD') || 0;

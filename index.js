@@ -4,12 +4,15 @@ const Airtable = require('airtable');
 const app = express();
 app.use(express.json());
 
+// Initialize Airtable using environment variables set on Render
 const base = new Airtable({ apiKey: process.env.AIRTABLE_ACCESS_TOKEN }).base(process.env.AIRTABLE_BASE_ID);
 
+// Health check endpoint
 app.get('/', (req, res) => {
   res.send('Webhook server is running! 🚀');
 });
 
+// Main Dialogflow CX Webhook Route
 app.post('/webhook', async (req, res) => {
   const sessionParameters = req.body.sessionInfo?.parameters || {};
   const product = (sessionParameters.product || '').trim();
@@ -18,6 +21,7 @@ app.post('/webhook', async (req, res) => {
   const brand = (sessionParameters.brand || '').trim();
 
   try {
+    // Build formulas using ARRAYJOIN to cleanly compare lookup values
     let formulaConditions = [
       `FIND(LOWER("${product}"), LOWER(ARRAYJOIN({Product}, ",")))`,
       `FIND(LOWER("${city}"), LOWER(ARRAYJOIN({city}, ",")))`,
@@ -31,6 +35,7 @@ app.post('/webhook', async (req, res) => {
 
     const formula = `AND(${formulaConditions.join(', ')})`;
 
+    // Fetch matching price records sorted by price ascending
     const records = await base('Prices').select({
       filterByFormula: formula,
       sort: [{ field: 'Price USD', direction: 'asc' }]
@@ -41,7 +46,7 @@ app.post('/webhook', async (req, res) => {
     if (!records || records.length === 0) {
       const brandPrefix = (brand && brand.toLowerCase() !== 'any') ? `${brand} ` : '';
       const locationLabel = subLocation ? `${subLocation}, ${city}` : city;
-      responseText = `❌ Sorry, no live in-stock prices found for **${brandPrefix}${product}** in ${locationLabel}.`;
+      responseText = `❌ Sorry, no live in-stock prices found for **${brandPrefix}${product}** in ${locationLabel}.\n\n`;
     } else {
       const locationLabel = subLocation ? `${subLocation}, ${city}` : city;
       const brandTitle = (brand && brand.toLowerCase() !== 'any') ? `${brand} ` : '';
@@ -51,7 +56,7 @@ app.post('/webhook', async (req, res) => {
       records.forEach((record, index) => {
         const medal = medals[index] || '🔹';
         
-        // Extract shop text cleanly from shop_name lookup or primary Shop field
+        // Extract shop name cleanly from lookup field or primary link field
         const shopLookup = record.get('shop_name');
         const rawShop = record.get('Shop');
         
@@ -67,7 +72,7 @@ app.post('/webhook', async (req, res) => {
           shopName = rawShop;
         }
 
-        // Final fallback only if no record name was retrieved
+        // Fallback if no text name could be resolved
         if (!shopName || shopName.startsWith('rec')) {
           shopName = 'Store';
         }
@@ -76,7 +81,13 @@ app.post('/webhook', async (req, res) => {
 
         responseText += `${medal} **${shopName}:** $${Number(price).toFixed(2)}${index === 0 ? ' (Cheapest! 🎉)' : ''}\n`;
       });
+      responseText += `\n`;
     }
+
+    // Call-to-action prompt appended at the bottom
+    responseText += `💬 *Would you like to check another item or end here?*\n`;
+    responseText += `• Type a new item (e.g., *"Sugar"*)\n`;
+    responseText += `• Type *"Exit"* or *"Done"* to finish`;
 
     res.status(200).json({
       fulfillmentResponse: {
@@ -98,3 +109,9 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
+
+ 
+
+    
+      
+      

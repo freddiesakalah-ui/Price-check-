@@ -9,7 +9,7 @@ const base = new Airtable({ apiKey: process.env.AIRTABLE_ACCESS_TOKEN }).base(pr
 
 // Health check endpoint
 app.get('/', (req, res) => {
-  res.send('Webhook server is running! ??');
+  res.send('Webhook server is running! 🚀');
 });
 
 // Main Dialogflow CX Webhook Route
@@ -46,15 +46,15 @@ app.post('/webhook', async (req, res) => {
     if (!records || records.length === 0) {
       const brandPrefix = (brand && brand.toLowerCase() !== 'any') ? `${brand} ` : '';
       const locationLabel = subLocation ? `${subLocation}, ${city}` : city;
-      responseText = `? Sorry, no live in-stock prices found for **${brandPrefix}${product}** in ${locationLabel}.\n\n`;
+      responseText = `❌ Sorry, no live in-stock prices found for **${brandPrefix}${product}** in ${locationLabel}.\n\n`;
     } else {
       const locationLabel = subLocation ? `${subLocation}, ${city}` : city;
       const brandTitle = (brand && brand.toLowerCase() !== 'any') ? `${brand} ` : '';
-      responseText = `?? **Price Comparison: ${brandTitle}${product}**\n?? *${locationLabel}*\n\n`;
-      const medals = ['??', '??', '??'];
+      responseText = `📊 **Price Comparison: ${brandTitle}${product}**\n📍 *${locationLabel}*\n\n`;
+      const medals = ['🥇', '🥈', '🥉'];
 
       records.forEach((record, index) => {
-        const medal = medals[index] || '??';
+        const medal = medals[index] || '🔹';
         
         // Extract shop name cleanly from lookup field or primary link field
         const shopLookup = record.get('shop_name');
@@ -79,13 +79,13 @@ app.post('/webhook', async (req, res) => {
 
         const price = record.get('Price USD') || 0;
 
-        responseText += `${medal} **${shopName}:** $${Number(price).toFixed(2)}${index === 0 ? ' (Cheapest! ??)' : ''}\n`;
+        responseText += `${medal} **${shopName}:** $${Number(price).toFixed(2)}${index === 0 ? ' (Cheapest! 🎉)' : ''}\n`;
       });
       responseText += `\n`;
     }
 
     // Call-to-action prompt appended at the bottom
-    responseText += `?? *Would you like to check another item or end here?*\n`;
+    responseText += `💬 *Would you like to check another item or end here?*\n`;
     responseText += `• Type a new item (e.g., *"Sugar"*)\n`;
     responseText += `• Type *"Exit"* or *"Done"* to finish`;
 
@@ -99,7 +99,7 @@ app.post('/webhook', async (req, res) => {
     console.error("Webhook Execution Error:", error);
     res.status(200).json({
       fulfillmentResponse: {
-        messages: [{ text: { text: ["?? System error while fetching prices. Please try again later."] } }]
+        messages: [{ text: { text: ["⚠️ System error while fetching prices. Please try again later."] } }]
       }
     });
   }

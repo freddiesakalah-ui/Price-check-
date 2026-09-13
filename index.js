@@ -1,127 +1,119 @@
 const express = require('express');
-const axios = require('axios');
-const app = express();
+const Airtable = require('airtable');
 
+const app = express();
 app.use(express.json());
 
-// Airtable Configuration (Environment Variables)
-const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY; 
-const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID; 
-const AIRTABLE_TABLE_NAME = 'Prices';
+// Initialize Airtable using environment variables set on Render
+const base = new Airtable({ apiKey: process.env.AIRTABLE_ACCESS_TOKEN }).base(process.env.AIRTABLE_BASE_ID);
 
-app.post('/webhook', async (req, res) => {
-    try {
-        // 1. Extract session parameters from Dialogflow CX request body
-        const parameters = req.body.sessionInfo?.parameters || {};
-        const product = parameters.product || '';
-        const unit = parameters.unit || '';
-        const city = parameters.city || '';
-        const subLocation = parameters.sub_location || '';
-        const brand = parameters.brand || 'any';
-
-        // 2. Construct Case-Insensitive Airtable Filter Formula using LOWER()
-        // Escapes single quotes to prevent formula syntax errors
-        const safeProduct = product.replace(/'/g, "\\'");
-        const safeUnit = unit.replace(/'/g, "\\'");
-        const safeCity = city.replace(/'/g, "\\'");
-        const safeSubLocation = subLocation.replace(/'/g, "\\'");
-        const safeBrand = brand.replace(/'/g, "\\'");
-
-        let filterFormula = `AND(` +
-            `LOWER({Product}) = LOWER('${safeProduct}'), ` +
-            `LOWER({Unit}) = LOWER('${safeUnit}'), ` +
-            `LOWER({City}) = LOWER('${safeCity}'), ` +
-            `LOWER({Sub_Location}) = LOWER('${safeSubLocation}')` +
-        `)`;
-
-        if (safeBrand && safeBrand.toLowerCase() !== 'any') {
-            filterFormula = `AND(` +
-                `LOWER({Product}) = LOWER('${safeProduct}'), ` +
-                `LOWER({Unit}) = LOWER('${safeUnit}'), ` +
-                `LOWER({City}) = LOWER('${safeCity}'), ` +
-                `LOWER({Sub_Location}) = LOWER('${safeSubLocation}'), ` +
-                `LOWER({Brand}) = LOWER('${safeBrand}')` +
-            `)`;
-        }
-
-        // 3. Query Airtable API (Sorted by lowest price ascending)
-        const airtableUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}?filterByFormula=${encodeURIComponent(filterFormula)}&sort[0][field]=Price&sort[0][direction]=asc`;
-        
-        const airtableResponse = await axios.get(airtableUrl, {
-            headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` }
-        });
-
-        const records = airtableResponse.data.records;
-
-        // Variables for final response
-        let priceResultsText = "";
-        let searchTimestamp = "";
-
-        // 4. Format Price Results and Extract Formatted_Timestamp
-        if (records.length === 0) {
-            priceResultsText = `❌ Sorry, no live in-stock prices found for **${product} (${unit})** in ${subLocation}, ${city}.`;
-            
-            // Fallback timestamp if no record is found in Airtable
-            searchTimestamp = new Date().toLocaleString("en-GB", { timeZone: "Africa/Harare" }).replace(',', '');
-        } else {
-            const medals = ['🥇', '🥈', '🥉'];
-            
-            // Extract formula-based timestamp field from Airtable OR fallback to Node date
-            const airtableTime = records[0].fields.Formatted_Timestamp || records[0].fields['Formatted Timestamp'];
-
-            if (airtableTime) {
-                searchTimestamp = airtableTime;
-            } else {
-                searchTimestamp = new Date().toLocaleString("en-GB", { 
-                    timeZone: "Africa/Harare",
-                    day: "2-digit", 
-                    month: "2-digit", 
-                    year: "2-digit", 
-                    hour: "2-digit", 
-                    minute: "2-digit", 
-                    second: "2-digit" 
-                }).replace(',', '');
-            }
-
-            const formattedList = records.map((record, index) => {
-                const store = record.fields.Store_Name || 'Local Store';
-                const price = record.fields.Price ? `$${record.fields.Price.toFixed(2)}` : 'N/A';
-                const prefix = medals[index] || '•';
-                const note = index === 0 ? ' (Cheapest! 🎉)' : '';
-                return `${prefix} **${store}:** ${price}${note}`;
-            }).join('\n');
-
-            priceResultsText = formattedList;
-        }
-
-        // 5. Return Payload back to Dialogflow CX
-        return res.json({
-            sessionInfo: {
-                parameters: {
-                    price_results_list: priceResultsText,
-                    search_timestamp: searchTimestamp
-                }
-            }
-        });
-
-    } catch (error) {
-        console.error('Webhook Error:', error.message);
-        
-        const errorTimestamp = new Date().toLocaleString("en-GB", { timeZone: "Africa/Harare" }).replace(',', '');
-
-        return res.json({
-            sessionInfo: {
-                parameters: {
-                    price_results_list: "⚠️ Unable to retrieve prices at the moment. Please try again later.",
-                    search_timestamp: errorTimestamp
-                }
-            }
-        });
-    }
+// Health check endpoint
+app.get('/', (req, res) => {
+  res.send('Webhook server is running! 🚀');
 });
 
-// Start Server
+// Main Dialogflow CX Webhook Route
+app.post('/webhook', async (req, res) => {
+  const sessionParameters = req.body.sessionInfo?.parameters || {};
+  const product = (sessionParameters.product || '').trim();
+  const city = (sessionParameters.city || '').trim();
+  const subLocation = (sessionParameters.sub_location || '').trim();
+  const brand = (sessionParameters.brand || '').trim();
+
+  try {
+    // Build formulas using ARRAYJOIN to cleanly compare lookup values
+    let formulaConditions = [
+      `FIND(LOWER("${product}"), LOWER(ARRAYJOIN({Product}, ",")))`,
+      `FIND(LOWER("${city}"), LOWER(ARRAYJOIN({city}, ",")))`,
+      `{Availability} = 'In Stock'`,
+      `{Outdated Flag} = 'NO'`
+    ];
+
+    if (subLocation) {
+      formulaConditions.push(`FIND(LOWER("${subLocation}"), LOWER(ARRAYJOIN({sub_location}, ",")))`);
+    }
+
+    const formula = `AND(${formulaConditions.join(', ')})`;
+
+    // Fetch matching price records sorted by price ascending
+    const records = await base('Prices').select({
+      filterByFormula: formula,
+      sort: [{ field: 'Price USD', direction: 'asc' }]
+    }).firstPage();
+
+    let responseText = "";
+
+    if (!records || records.length === 0) {
+      const brandPrefix = (brand && brand.toLowerCase() !== 'any') ? `${brand} ` : '';
+      const locationLabel = subLocation ? `${subLocation}, ${city}` : city;
+      responseText = `❌ Sorry, no live in-stock prices found for **${brandPrefix}${product}** in ${locationLabel}.\n\n`;
+    } else {
+      const locationLabel = subLocation ? `${subLocation}, ${city}` : city;
+      const brandTitle = (brand && brand.toLowerCase() !== 'any') ? `${brand} ` : '';
+      responseText = `📊 **Price Comparison: ${brandTitle}${product}**\n📍 *${locationLabel}*\n\n`;
+      const medals = ['🥇', '🥈', '🥉'];
+
+      records.forEach((record, index) => {
+        const medal = medals[index] || '🔹';
+        
+        // Extract shop name cleanly from lookup field or primary link field
+        const shopLookup = record.get('shop_name');
+        const rawShop = record.get('Shop');
+        
+        let shopName = '';
+
+        if (Array.isArray(shopLookup) && shopLookup.length > 0) {
+          shopName = shopLookup[0];
+        } else if (typeof shopLookup === 'string' && shopLookup.trim() !== '') {
+          shopName = shopLookup;
+        } else if (Array.isArray(rawShop) && rawShop.length > 0) {
+          shopName = rawShop[0];
+        } else if (typeof rawShop === 'string') {
+          shopName = rawShop;
+        }
+
+        // Fallback if no text name could be resolved
+        if (!shopName || shopName.startsWith('rec')) {
+          shopName = 'Store';
+        }
+
+        const price = record.get('Price USD') || 0;
+
+        responseText += `${medal} **${shopName}:** $${Number(price).toFixed(2)}${index === 0 ? ' (Cheapest! 🎉)' : ''}\n`;
+      });
+      responseText += `\n`;
+    }
+
+    // Call-to-action prompt appended at the bottom
+    responseText += `💬 *Would you like to check another item or end here?*\n`;
+    responseText += `• Type a new item (e.g., *"Sugar"*)\n`;
+    responseText += `• Type *"Exit"* or *"Done"* to finish`;
+
+    res.status(200).json({
+      fulfillmentResponse: {
+        messages: [{ text: { text: [responseText] } }]
+      }
+    });
+
+  } catch (error) {
+    console.error("Webhook Execution Error:", error);
+    res.status(200).json({
+      fulfillmentResponse: {
+        messages: [{ text: { text: ["⚠️ System error while fetching prices. Please try again later."] } }]
+      }
+    });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`PriceCheckZim Webhook server running on port ${PORT}`);
+  console.log(`Server listening on port ${PORT}`);
 });
+
+
+      
+            
+           
+                
+
+   

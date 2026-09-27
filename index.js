@@ -14,42 +14,41 @@ app.get('/', (req, res) => {
 
 // Main Dialogflow CX Webhook Route
 app.post('/webhook', async (req, res) => {
+  const sessionParameters = req.body.sessionInfo?.parameters || {};
+  
+  // Extract all parameters (checking common naming variations)
+  const product = (sessionParameters.product || '').trim();
+  const city = (sessionParameters.city || '').trim();
+  const subLocation = (sessionParameters.sub_location || sessionParameters.sublocation || '').trim();
+  const brand = (sessionParameters.brand || '').trim();
+  const flavour = (sessionParameters.flavour || sessionParameters.flavor || '').trim();
+  const unit = (sessionParameters.unit || '').trim();
+
+  // Retrieve existing cart/history from session parameters or initialize an empty array
+  let cart = Array.isArray(sessionParameters.cart) ? sessionParameters.cart : [];
+
   try {
-    const sessionParameters = req.body.sessionInfo?.parameters || {};
-
-    // Safely extract all parameters with string type-checking
-    const product = String(sessionParameters.product || '').trim();
-    const city = String(sessionParameters.city || '').trim();
-    const subLocation = String(sessionParameters.sub_location || '').trim();
-    const brand = String(sessionParameters.brand || '').trim();
-    const flavour = String(sessionParameters.flavour || sessionParameters.flavor || '').trim();
-    const unit = String(sessionParameters.unit || '').trim();
-
-    // Retrieve existing cart/history from session parameters or initialize an empty array
-    let cart = Array.isArray(sessionParameters.cart) ? sessionParameters.cart : [];
-
-    // Base mandatory filter conditions
+    // Build formulas using ARRAYJOIN to cleanly compare lookup values with exact Airtable casing
     let formulaConditions = [
       `FIND(LOWER("${product}"), LOWER(ARRAYJOIN({Product}, ",")))`,
-      `FIND(LOWER("${city}"), LOWER(ARRAYJOIN({city}, ",")))`,
+      `FIND(LOWER("${city}"), LOWER(ARRAYJOIN({City}, ",")))`,
       `{Availability} = 'In Stock'`,
       `{Outdated Flag} = 'NO'`
     ];
 
-    // Optional location/item filters
     if (subLocation) {
-      formulaConditions.push(`FIND(LOWER("${subLocation}"), LOWER(ARRAYJOIN({sub_location}, ",")))`);
+      formulaConditions.push(`FIND(LOWER("${subLocation}"), LOWER(ARRAYJOIN({Sub_Location}, ",")))`);
     }
 
-    if (brand && brand.toLowerCase() !== 'any' && brand.toLowerCase() !== 'null') {
+    if (brand && brand.toLowerCase() !== 'any') {
       formulaConditions.push(`FIND(LOWER("${brand}"), LOWER(ARRAYJOIN({Brand}, ",")))`);
     }
 
-    if (flavour && flavour.toLowerCase() !== 'any' && flavour.toLowerCase() !== 'null') {
+    if (flavour && flavour.toLowerCase() !== 'any') {
       formulaConditions.push(`FIND(LOWER("${flavour}"), LOWER(ARRAYJOIN({Flavour}, ",")))`);
     }
 
-    if (unit && unit.toLowerCase() !== 'any' && unit.toLowerCase() !== 'null') {
+    if (unit && unit.toLowerCase() !== 'any') {
       formulaConditions.push(`FIND(LOWER("${unit}"), LOWER(ARRAYJOIN({Unit}, ",")))`);
     }
 
@@ -62,11 +61,11 @@ app.post('/webhook', async (req, res) => {
     }).firstPage();
 
     let responseText = "";
-
-    // Safely construct product title
-    const unitLabel = (unit && unit.toLowerCase() !== 'any' && unit.toLowerCase() !== 'null') ? `${unit} ` : '';
-    const brandLabel = (brand && brand.toLowerCase() !== 'any' && brand.toLowerCase() !== 'null') ? `${brand} ` : '';
-    const flavourLabel = (flavour && flavour.toLowerCase() !== 'any' && flavour.toLowerCase() !== 'null') ? `${flavour} ` : '';
+    
+    // Construct full product label (e.g., "loaf Lobels White Bread")
+    const unitLabel = (unit && unit.toLowerCase() !== 'any') ? `${unit} ` : '';
+    const brandLabel = (brand && brand.toLowerCase() !== 'any') ? `${brand} ` : '';
+    const flavourLabel = (flavour && flavour.toLowerCase() !== 'any') ? `${flavour} ` : '';
     const fullProductTitle = `${unitLabel}${brandLabel}${flavourLabel}${product}`.trim();
     const locationLabel = subLocation ? `${subLocation}, ${city}` : city;
 
@@ -78,10 +77,11 @@ app.post('/webhook', async (req, res) => {
 
       records.forEach((record, index) => {
         const medal = medals[index] || '🔹';
-
-        // Safe extraction of Shop Name
+        
+        // Extract shop name cleanly from lookup field or primary link field
         const shopLookup = record.get('shop_name');
         const rawShop = record.get('Shop');
+        
         let shopName = '';
 
         if (Array.isArray(shopLookup) && shopLookup.length > 0) {
@@ -100,13 +100,13 @@ app.post('/webhook', async (req, res) => {
 
         const price = Number(record.get('Price USD') || 0);
 
-        // Fetch Formatted_Timestamp safely
+        // Fetch Formatted_Timestamp field from Airtable
         const timestamp = record.get('Formatted_Timestamp') || '';
         const timeDisplay = timestamp ? ` _(Updated: ${timestamp})_` : '';
 
         responseText += `${medal} **${shopName}:** $${price.toFixed(2)}${index === 0 ? ' (Cheapest! 🎉)' : ''}${timeDisplay}\n`;
 
-        // Store cheapest item to session history
+        // Store the cheapest record into the session history
         if (index === 0) {
           const cartItem = {
             item: fullProductTitle,
@@ -115,7 +115,7 @@ app.post('/webhook', async (req, res) => {
             timestamp: timestamp
           };
 
-          const existingIndex = cart.findIndex(c => c.item && c.item.toLowerCase() === fullProductTitle.toLowerCase());
+          const existingIndex = cart.findIndex(c => c.item.toLowerCase() === fullProductTitle.toLowerCase());
           if (existingIndex > -1) {
             cart[existingIndex] = cartItem;
           } else {
@@ -130,14 +130,13 @@ app.post('/webhook', async (req, res) => {
     if (cart.length > 0) {
       responseText += `----------------------------------------\n`;
       responseText += `🛒 **Your Saved Search Basket:**\n`;
-
+      
       let totalBudgetCost = 0;
 
       cart.forEach((savedItem, index) => {
-        const itemPrice = Number(savedItem.price || 0);
-        totalBudgetCost += itemPrice;
+        totalBudgetCost += savedItem.price;
         const timeInfo = savedItem.timestamp ? ` _[${savedItem.timestamp}]_` : '';
-        responseText += `${index + 1}. ${savedItem.item} - **${savedItem.shop}**: $${itemPrice.toFixed(2)}${timeInfo}\n`;
+        responseText += `${index + 1}. ${savedItem.item} - **${savedItem.shop}**: $${savedItem.price.toFixed(2)}${timeInfo}\n`;
       });
 
       responseText += `\n💰 **TOTAL BUDGET COST:** **$${totalBudgetCost.toFixed(2)}**\n`;
@@ -149,7 +148,7 @@ app.post('/webhook', async (req, res) => {
     responseText += `• Type a new item (e.g., *"Sugar"*)\n`;
     responseText += `• Type *"Exit"* or *"Done"* to finish`;
 
-    // Return response
+    // Return fulfillment response and persist updated cart in session parameters
     res.status(200).json({
       fulfillmentResponse: {
         messages: [{ text: { text: [responseText] } }]

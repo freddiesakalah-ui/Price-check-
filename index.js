@@ -14,21 +14,21 @@ app.get('/', (req, res) => {
 
 // Main Dialogflow CX Webhook Route
 app.post('/webhook', async (req, res) => {
-  const sessionParameters = req.body.sessionInfo?.parameters || {};
-  
-  // Extract all parameters including Flavour and Unit
-  const product = (sessionParameters.product || '').trim();
-  const city = (sessionParameters.city || '').trim();
-  const subLocation = (sessionParameters.sub_location || '').trim();
-  const brand = (sessionParameters.brand || '').trim();
-  const flavour = (sessionParameters.flavour || sessionParameters.flavor || '').trim();
-  const unit = (sessionParameters.unit || '').trim();
-
-  // Retrieve existing cart/history from session parameters or initialize an empty array
-  let cart = Array.isArray(sessionParameters.cart) ? sessionParameters.cart : [];
-
   try {
-    // Build formulas using ARRAYJOIN to cleanly compare lookup values
+    const sessionParameters = req.body.sessionInfo?.parameters || {};
+
+    // Safely extract all parameters with string type-checking
+    const product = String(sessionParameters.product || '').trim();
+    const city = String(sessionParameters.city || '').trim();
+    const subLocation = String(sessionParameters.sub_location || '').trim();
+    const brand = String(sessionParameters.brand || '').trim();
+    const flavour = String(sessionParameters.flavour || sessionParameters.flavor || '').trim();
+    const unit = String(sessionParameters.unit || '').trim();
+
+    // Retrieve existing cart/history from session parameters or initialize an empty array
+    let cart = Array.isArray(sessionParameters.cart) ? sessionParameters.cart : [];
+
+    // Base mandatory filter conditions
     let formulaConditions = [
       `FIND(LOWER("${product}"), LOWER(ARRAYJOIN({Product}, ",")))`,
       `FIND(LOWER("${city}"), LOWER(ARRAYJOIN({city}, ",")))`,
@@ -36,19 +36,20 @@ app.post('/webhook', async (req, res) => {
       `{Outdated Flag} = 'NO'`
     ];
 
+    // Optional location/item filters
     if (subLocation) {
       formulaConditions.push(`FIND(LOWER("${subLocation}"), LOWER(ARRAYJOIN({sub_location}, ",")))`);
     }
 
-    if (brand && brand.toLowerCase() !== 'any') {
+    if (brand && brand.toLowerCase() !== 'any' && brand.toLowerCase() !== 'null') {
       formulaConditions.push(`FIND(LOWER("${brand}"), LOWER(ARRAYJOIN({Brand}, ",")))`);
     }
 
-    if (flavour && flavour.toLowerCase() !== 'any') {
+    if (flavour && flavour.toLowerCase() !== 'any' && flavour.toLowerCase() !== 'null') {
       formulaConditions.push(`FIND(LOWER("${flavour}"), LOWER(ARRAYJOIN({Flavour}, ",")))`);
     }
 
-    if (unit && unit.toLowerCase() !== 'any') {
+    if (unit && unit.toLowerCase() !== 'any' && unit.toLowerCase() !== 'null') {
       formulaConditions.push(`FIND(LOWER("${unit}"), LOWER(ARRAYJOIN({Unit}, ",")))`);
     }
 
@@ -61,11 +62,11 @@ app.post('/webhook', async (req, res) => {
     }).firstPage();
 
     let responseText = "";
-    
-    // Construct full product label (e.g., "1L Lobels Orange Crush Mazoe")
-    const unitLabel = (unit && unit.toLowerCase() !== 'any') ? `${unit} ` : '';
-    const brandLabel = (brand && brand.toLowerCase() !== 'any') ? `${brand} ` : '';
-    const flavourLabel = (flavour && flavour.toLowerCase() !== 'any') ? `${flavour} ` : '';
+
+    // Safely construct product title
+    const unitLabel = (unit && unit.toLowerCase() !== 'any' && unit.toLowerCase() !== 'null') ? `${unit} ` : '';
+    const brandLabel = (brand && brand.toLowerCase() !== 'any' && brand.toLowerCase() !== 'null') ? `${brand} ` : '';
+    const flavourLabel = (flavour && flavour.toLowerCase() !== 'any' && flavour.toLowerCase() !== 'null') ? `${flavour} ` : '';
     const fullProductTitle = `${unitLabel}${brandLabel}${flavourLabel}${product}`.trim();
     const locationLabel = subLocation ? `${subLocation}, ${city}` : city;
 
@@ -77,11 +78,10 @@ app.post('/webhook', async (req, res) => {
 
       records.forEach((record, index) => {
         const medal = medals[index] || '🔹';
-        
-        // Extract shop name cleanly from lookup field or primary link field
+
+        // Safe extraction of Shop Name
         const shopLookup = record.get('shop_name');
         const rawShop = record.get('Shop');
-        
         let shopName = '';
 
         if (Array.isArray(shopLookup) && shopLookup.length > 0) {
@@ -100,13 +100,13 @@ app.post('/webhook', async (req, res) => {
 
         const price = Number(record.get('Price USD') || 0);
 
-        // Fetch Formatted_Timestamp field from Airtable
+        // Fetch Formatted_Timestamp safely
         const timestamp = record.get('Formatted_Timestamp') || '';
         const timeDisplay = timestamp ? ` _(Updated: ${timestamp})_` : '';
 
         responseText += `${medal} **${shopName}:** $${price.toFixed(2)}${index === 0 ? ' (Cheapest! 🎉)' : ''}${timeDisplay}\n`;
 
-        // Store the cheapest record (index === 0) into the session history
+        // Store cheapest item to session history
         if (index === 0) {
           const cartItem = {
             item: fullProductTitle,
@@ -115,11 +115,11 @@ app.post('/webhook', async (req, res) => {
             timestamp: timestamp
           };
 
-          const existingIndex = cart.findIndex(c => c.item.toLowerCase() === fullProductTitle.toLowerCase());
+          const existingIndex = cart.findIndex(c => c.item && c.item.toLowerCase() === fullProductTitle.toLowerCase());
           if (existingIndex > -1) {
-            cart[existingIndex] = cartItem; // Update existing entry
+            cart[existingIndex] = cartItem;
           } else {
-            cart.push(cartItem); // Append new entry
+            cart.push(cartItem);
           }
         }
       });
@@ -130,13 +130,14 @@ app.post('/webhook', async (req, res) => {
     if (cart.length > 0) {
       responseText += `----------------------------------------\n`;
       responseText += `🛒 **Your Saved Search Basket:**\n`;
-      
+
       let totalBudgetCost = 0;
 
       cart.forEach((savedItem, index) => {
-        totalBudgetCost += savedItem.price;
+        const itemPrice = Number(savedItem.price || 0);
+        totalBudgetCost += itemPrice;
         const timeInfo = savedItem.timestamp ? ` _[${savedItem.timestamp}]_` : '';
-        responseText += `${index + 1}. ${savedItem.item} - **${savedItem.shop}**: $${savedItem.price.toFixed(2)}${timeInfo}\n`;
+        responseText += `${index + 1}. ${savedItem.item} - **${savedItem.shop}**: $${itemPrice.toFixed(2)}${timeInfo}\n`;
       });
 
       responseText += `\n💰 **TOTAL BUDGET COST:** **$${totalBudgetCost.toFixed(2)}**\n`;
@@ -148,7 +149,7 @@ app.post('/webhook', async (req, res) => {
     responseText += `• Type a new item (e.g., *"Sugar"*)\n`;
     responseText += `• Type *"Exit"* or *"Done"* to finish`;
 
-    // Return fulfillment response and persist updated cart in session parameters
+    // Return response
     res.status(200).json({
       fulfillmentResponse: {
         messages: [{ text: { text: [responseText] } }]
@@ -164,7 +165,7 @@ app.post('/webhook', async (req, res) => {
     console.error("Webhook Execution Error:", error);
     res.status(200).json({
       fulfillmentResponse: {
-        messages: [{ text: { text: ["⚠️ System error while fetching prices. Please try again later."] } }]
+        messages: [{ text: { text: [`⚠️ System error while fetching prices: ${error.message}`] } }]
       }
     });
   }
@@ -174,9 +175,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
-           
-      
-      
             
            
                 

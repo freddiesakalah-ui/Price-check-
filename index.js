@@ -41,8 +41,8 @@ app.post('/webhook', async (req, res) => {
       formulaConditions.push(`FIND(LOWER("${subLocation}"), LOWER(ARRAYJOIN({Sub_Location}, ",")))`);
     }
 
-    if (Brand && Brand.toLowerCase() !== 'any') {
-      formulaConditions.push(`FIND(LOWER("${Brand}"), LOWER(ARRAYJOIN({Brand}, ",")))`);
+    if (brand && brand.toLowerCase() !== 'any') {
+      formulaConditions.push(`FIND(LOWER("${brand}"), LOWER(ARRAYJOIN({Brand}, ",")))`);
     }
 
     if (flavour && flavour.toLowerCase() !== 'any') {

@@ -16,7 +16,7 @@ app.get('/', (req, res) => {
 app.post('/webhook', async (req, res) => {
   const sessionParameters = req.body.sessionInfo?.parameters || {};
   
-  // Extract all parameters (checking common naming variations)
+  // Extract all parameters from Dialogflow CX session
   const product = (sessionParameters.product || '').trim();
   const city = (sessionParameters.city || '').trim();
   const subLocation = (sessionParameters.sub_location || sessionParameters.sublocation || '').trim();
@@ -28,7 +28,8 @@ app.post('/webhook', async (req, res) => {
   let cart = Array.isArray(sessionParameters.cart) ? sessionParameters.cart : [];
 
   try {
-    // Build formulas using ARRAYJOIN to cleanly compare lookup values with exact Airtable casing
+    // Build filter formulas using exact Airtable column name casing:
+    // {Product}, {City}, {Sub_Location}, {Brand}, {Flavour}, {Unit}
     let formulaConditions = [
       `FIND(LOWER("${product}"), LOWER(ARRAYJOIN({Product}, ",")))`,
       `FIND(LOWER("${city}"), LOWER(ARRAYJOIN({City}, ",")))`,
@@ -62,7 +63,7 @@ app.post('/webhook', async (req, res) => {
 
     let responseText = "";
     
-    // Construct full product label (e.g., "loaf Lobels White Bread")
+    // Construct display title
     const unitLabel = (unit && unit.toLowerCase() !== 'any') ? `${unit} ` : '';
     const brandLabel = (brand && brand.toLowerCase() !== 'any') ? `${brand} ` : '';
     const flavourLabel = (flavour && flavour.toLowerCase() !== 'any') ? `${flavour} ` : '';
@@ -78,7 +79,7 @@ app.post('/webhook', async (req, res) => {
       records.forEach((record, index) => {
         const medal = medals[index] || '🔹';
         
-        // Extract shop name cleanly from lookup field or primary link field
+        // Extract shop name cleanly
         const shopLookup = record.get('shop_name');
         const rawShop = record.get('Shop');
         
@@ -99,14 +100,12 @@ app.post('/webhook', async (req, res) => {
         }
 
         const price = Number(record.get('Price USD') || 0);
-
-        // Fetch Formatted_Timestamp field from Airtable
         const timestamp = record.get('Formatted_Timestamp') || '';
         const timeDisplay = timestamp ? ` _(Updated: ${timestamp})_` : '';
 
         responseText += `${medal} **${shopName}:** $${price.toFixed(2)}${index === 0 ? ' (Cheapest! 🎉)' : ''}${timeDisplay}\n`;
 
-        // Store the cheapest record into the session history
+        // Store the lowest price record in the session history
         if (index === 0) {
           const cartItem = {
             item: fullProductTitle,
@@ -126,7 +125,7 @@ app.post('/webhook', async (req, res) => {
       responseText += `\n`;
     }
 
-    // --- SUB-SESSION SUMMARY TABLE & RUNNING TOTAL ---
+    // Saved Search Basket & Running Total
     if (cart.length > 0) {
       responseText += `----------------------------------------\n`;
       responseText += `🛒 **Your Saved Search Basket:**\n`;
@@ -148,7 +147,7 @@ app.post('/webhook', async (req, res) => {
     responseText += `• Type a new item (e.g., *"Sugar"*)\n`;
     responseText += `• Type *"Exit"* or *"Done"* to finish`;
 
-    // Return fulfillment response and persist updated cart in session parameters
+    // Send response and store cart state back to Dialogflow
     res.status(200).json({
       fulfillmentResponse: {
         messages: [{ text: { text: [responseText] } }]

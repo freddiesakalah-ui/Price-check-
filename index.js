@@ -1,6 +1,5 @@
 const express = require('express');
 const Airtable = require('airtable');
-const axios = require('axios');
 
 const app = express();
 app.use(express.json());
@@ -37,8 +36,9 @@ app.post('/webhook', async (req, res) => {
 
         try {
             const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`;
-            const apiRes = await axios.get(geocodeUrl);
-            const results = apiRes.data.results;
+            const apiRes = await fetch(geocodeUrl);
+            const apiData = await apiRes.json();
+            const results = apiData.results;
 
             let city = '';
             let subLocation = '';
@@ -96,8 +96,6 @@ app.post('/webhook', async (req, res) => {
     let cart = Array.isArray(sessionParameters.cart) ? sessionParameters.cart : [];
 
     try {
-        // Build filter formulas using exact Airtable column name casing:
-        // {Product}, {City}, {Sub_Location}, {Brand}, {Flavour}, {Unit}
         let formulaConditions = [
             `FIND(LOWER("${product}"), LOWER(ARRAYJOIN({Product}, ",")))`,
             `FIND(LOWER("${city}"), LOWER(ARRAYJOIN({City}, ",")))`,
@@ -123,7 +121,6 @@ app.post('/webhook', async (req, res) => {
 
         const formula = `AND(${formulaConditions.join(', ')})`;
 
-        // Fetch matching price records sorted by price ascending
         const records = await base('Prices').select({
             filterByFormula: formula,
             sort: [{ field: 'Price USD', direction: 'asc' }]
@@ -131,7 +128,6 @@ app.post('/webhook', async (req, res) => {
 
         let responseText = "";
 
-        // Construct display title
         const unitLabel = (unit && unit.toLowerCase() !== 'any') ? `${unit} ` : '';
         const brandLabel = (brand && brand.toLowerCase() !== 'any') ? `${brand} ` : '';
         const flavourLabel = (flavour && flavour.toLowerCase() !== 'any') ? `${flavour} ` : '';
@@ -147,7 +143,6 @@ app.post('/webhook', async (req, res) => {
             records.forEach((record, index) => {
                 const medal = medals[index] || '🔹';
 
-                // Extract shop name cleanly
                 const shopLookup = record.get('shop_name');
                 const rawShop = record.get('Shop');
                 let shopName = '';
@@ -172,7 +167,6 @@ app.post('/webhook', async (req, res) => {
 
                 responseText += `${medal} **${shopName}**: $${price.toFixed(2)}${index === 0 ? ' (Cheapest! 🥳)' : ''}${timeDisplay}\n`;
 
-                // Store the lowest price record in the session history
                 if (index === 0) {
                     const cartItem = {
                         item: fullProductTitle,
@@ -185,10 +179,8 @@ app.post('/webhook', async (req, res) => {
             });
         }
 
-        // Calculate total basket cost
         let totalCost = cart.reduce((sum, entry) => sum + entry.price, 0);
 
-        // Format cart summary text
         let cartSummary = "";
         if (cart.length > 0) {
             cartSummary += `\n──────────────────────────────\n🛒 **Your Saved Search Basket:**\n`;
@@ -198,10 +190,8 @@ app.post('/webhook', async (req, res) => {
             cartSummary += `\n💰 **TOTAL BUDGET COST: $${totalCost.toFixed(2)}**\n`;
         }
 
-        // Append final call to action prompts
-        responseText += `${cartSummary}\n💭 *Would you like to check another item or end here?*\n• Type a new item (e.g., "Sugar")\n• Type "Exit" or "Done" to finish \n• Call +263 0775448260 for Feedback and Enquiries`;
+        responseText += `${cartSummary}\n💭 *Would you like to check another item or end here?*\n• Type a new item (e.g., "Sugar")\n• Type "Exit" or "Done" to finish`;
 
-        // Send response back to Dialogflow CX
         return res.status(200).json({
             sessionInfo: {
                 parameters: {
@@ -238,8 +228,3 @@ app.post('/webhook', async (req, res) => {
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`🚀 Webhook active on port ${PORT}`));
-            
-           
-                
-
-   

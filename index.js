@@ -1,3 +1,37 @@
+// =========================================================================
+// 1. ALL IMPORTS (Using CommonJS require)
+// =========================================================================
+const express = require('express');
+const Airtable = require('airtable');
+const multer = require('multer');
+const FormData = require('form-data');
+const crypto = require('crypto');
+
+// =========================================================================
+// 2. EXPRESS & MIDDLEWARE INITIALIZATION
+// =========================================================================
+const app = express();
+app.use(express.json({ limit: '10mb' }));
+
+// Memory storage setup for Mailgun CSV attachments
+const upload = multer({ limits: { fileSize: 10 * 1024 * 1024 } });
+
+// Environment Variables
+const PORT = process.env.PORT || 3000;
+const MAILGUN_API_KEY = process.env.MAILGUN_API_KEY;
+const MAILGUN_DOMAIN = process.env.MAILGUN_DOMAIN;
+const AIRTABLE_TOKEN = process.env.AIRTABLE_ACCESS_TOKEN;
+const BASE_ID = process.env.AIRTABLE_BASE_ID; // Base ID: appwQZHTlwlpuDBUa
+const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
+
+
+// =========================================================================
+// 3. YOUR EXISTING WORKING DIALOGFLOW CODE (FROM SCREENSHOT 1)
+// =========================================================================
+app.post('/', async (req, res) => {
+  // -----------------------------------------------------------------------
+  // KEEP ALL YOUR WORKING DIALOGFLOW FULFILLMENT LOGIC HERE EXACTLY AS IT IS
+  // -----------------------------------------------------------------------
 const express = require('express');
 const Airtable = require('airtable');
 
@@ -229,3 +263,190 @@ app.post('/webhook', async (req, res) => {
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`🚀 Webhook active on port ${PORT}`));
 
+
+    
+});
+
+
+// =========================================================================
+// 4. NEW MAILGUN EMAIL INGESTION ROUTE
+// =========================================================================
+app.post('/api/email-ingest', upload.any(), async (req, res) => {
+  try {
+    const senderEmail = (req.body.sender || req.body.from || '').toLowerCase().trim();
+    const subject = req.body.subject || '';
+    const files = req.files || [];
+
+    // 1. Find CSV File
+    const csvFile = files.find(f => f.originalname && f.originalname.endsWith('.csv'));
+    if (!csvFile) return res.status(200).send('No CSV attachment found.');
+
+    // 2. Extract PIN from Subject
+    const pinMatch = subject.match(/PIN:\s*(\d{4,6})/i);
+    const providedPin = pinMatch ? pinMatch[1] : null;
+
+    if (!providedPin) {
+      await sendOutboundEmail(senderEmail, 'Update Failed: Missing PIN', 'Submission rejected: Missing PIN in subject.');
+      return res.status(200).send('Missing PIN');
+    }
+
+    // 3. Authenticate Shop Credentials against "Shops" Table
+    const shopFormula = encodeURIComponent(`AND({Authorized Email} = '${senderEmail}', {Security PIN} = '${providedPin}', {Active} = 1)`);
+    const shopRes = await fetch(`https://api.airtable.com/v0/${BASE_ID}/Shops?filterByFormula=${shopFormula}`, {
+      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` }
+    });
+    const shopData = await shopRes.json();
+
+    if (!shopData.records || shopData.records.length === 0) {
+      await sendOutboundEmail(senderEmail, 'Update Failed', 'Unauthorized email or invalid PIN.');
+      return res.status(200).send('Unauthorized');
+    }
+
+    const shop = shopData.records[0].fields;
+    const shopId = shop['Shop ID'];
+    const city = shop['City'] || '';
+    const subLocation = shop['Sub Location'] || '';
+
+    // 4. Archive Historical Prices in "Prices" Table
+    const oldFormula = encodeURIComponent(`AND({Shop ID} = '${shopId}', {Outdated Flag} = 'NO')`);
+    const oldRes = await fetch(`https://api.airtable.com/v0/${BASE_ID}/Prices?filterByFormula=${oldFormula}`, {
+      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` }
+    });
+    const oldData = await oldRes.json();
+
+    if (oldData.records && oldData.records.length > 0) {
+      const archiveBatch = oldData.records.map(r => ({ id: r.id, fields: { 'Outdated Flag': 'YES' } }));
+      for (let i = 0; i < archiveBatch.length; i += 10) {
+        await fetch(`https://api.airtable.com/v0/${BASE_ID}/Prices`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ records: archiveBatch.slice(i, i + 10) })
+        });
+      }
+    }
+
+    // 5. Parse CSV Buffer & Write Clean Items
+    const csvText = csvFile.buffer.toString('utf-8');
+    const lines = csvText.split(/\r?\n/);
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+
+    const newRecords = [];
+    for (let i = 1; i < lines.length; i++) {
+      if (!lines[i].trim()) continue;
+      const cols = lines[i].split(',').map(c => c.trim());
+
+      const product = cols[headers.indexOf('product')] || '';
+      const brand = cols[headers.indexOf('brand')] || '';
+      const flavour = cols[headers.indexOf('flavour')] || cols[headers.indexOf('flavor')] || '';
+      const unit = cols[headers.indexOf('unit')] || 'Each';
+      const rawPrice = cols[headers.indexOf('price_usd')] || cols[headers.indexOf('price')] || '0';
+      const cleanPrice = parseFloat(rawPrice.replace(/[^0-9.]/g, ''));
+
+      if (product && !isNaN(cleanPrice) && cleanPrice > 0) {
+        newRecords.push({
+          fields: {
+            'Shop ID': [shopData.records[0].id],
+            'Product': product,
+            'Brand': brand,
+            'Flavour': flavour,
+            'Unit': unit,
+            'Price': cleanPrice,
+            'City': city,
+            'Sub Location': subLocation,
+            'Availability': 'In Stock',
+            'Outdated Flag': 'NO',
+            'Status': 'Approved'
+          }
+        });
+      }
+    }
+
+    for (let i = 0; i < newRecords.length; i += 10) {
+      await fetch(`https://api.airtable.com/v0/${BASE_ID}/Prices`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ records: newRecords.slice(i, i + 10) })
+      });
+    }
+
+    await sendOutboundEmail(senderEmail, 'Update Successful', `Processed ${newRecords.length} items for Shop ID ${shopId}.`);
+    return res.status(200).send('Ingestion Complete');
+
+  } catch (error) {
+    console.error('[Email Ingest Error]:', error);
+    return res.status(500).send('Internal Server Error');
+  }
+});
+
+
+// =========================================================================
+// 5. NEW ADMIN ONBOARDING ROUTE
+// =========================================================================
+app.post('/api/admin/stores', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || authHeader !== `Bearer ${ADMIN_API_KEY}`) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { shopId, shopName, managerEmail, city, subLocation } = req.body;
+    const generatedPin = crypto.randomInt(1000, 10000).toString();
+
+    const airtableRes = await fetch(`https://api.airtable.com/v0/${BASE_ID}/Shops`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${AIRTABLE_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        records: [{
+          fields: {
+            'Shop ID': parseInt(shopId, 10) || shopId,
+            'Shop Name': shopName.trim(),
+            'Authorized Email': managerEmail.toLowerCase().trim(),
+            'Security PIN': generatedPin,
+            'City': city.trim(),
+            'Sub Location': (subLocation || '').trim(),
+            'Active': true
+          }
+        }]
+      })
+    });
+
+    if (!airtableRes.ok) throw new Error('Failed to create shop in Airtable');
+
+    const emailBody = `Welcome ${shopName}!\n\nShop ID: ${shopId}\nSecurity PIN: ${generatedPin}\n\nTo submit price updates, send a CSV attachment to updates@${MAILGUN_DOMAIN} with Subject: "Weekly Update - PIN: ${generatedPin}"`;
+    await sendOutboundEmail(managerEmail, `Shop Setup - PIN: ${generatedPin}`, emailBody);
+
+    return res.status(201).json({ status: 'Success', shopId, securityPin: generatedPin });
+  } catch (err) {
+    console.error('[Onboarding Error]:', err);
+    return res.status(500).json({ error: 'Onboarding failed.' });
+  }
+});
+
+
+// Helper: Outbound Mailgun Sender
+async function sendOutboundEmail(to, subject, textBody) {
+  try {
+    const form = new FormData();
+    form.append('from', `PriceCheck Updates <postmaster@${MAILGUN_DOMAIN}>`);
+    form.append('to', to);
+    form.append('subject', subject);
+    form.append('text', textBody);
+
+    const auth = Buffer.from(`api:${MAILGUN_API_KEY}`).toString('base64');
+    await fetch(`https://api.mailgun.net/v3/${MAILGUN_DOMAIN}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Basic ${auth}` },
+      body: form
+    });
+  } catch (err) {
+    console.error('[Mailgun Outbound Error]:', err);
+  }
+}
+
+// =========================================================================
+// 6. SERVER LISTEN
+// =========================================================================
+app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));

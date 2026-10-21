@@ -18,8 +18,8 @@ const upload = multer({ limits: { fileSize: 10 * 1024 * 1024 } });
 
 // Environment Variables
 const PORT = process.env.PORT || 3000;
-const MAILGUN_API_KEY = process.env.MAILGUN_API_KEY;
-const MAILGUN_DOMAIN = process.env.MAILGUN_DOMAIN;
+const MAILGUN_API_KEY = process.env.c3d5be3f75cf00b72afa2bf64496918e-e4e20ddb-a96fddcd;
+const MAILGUN_DOMAIN = process.env.sandboxa88ad665b0f84242a50039a1c9872858.mailgun.org;
 const AIRTABLE_TOKEN = process.env.AIRTABLE_ACCESS_TOKEN;
 const BASE_ID = process.env.AIRTABLE_BASE_ID; // Base ID: appwQZHTlwlpuDBUa
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY;

@@ -6,6 +6,12 @@ const Airtable = require('airtable');
 const multer = require('multer');
 const FormData = require('form-data');
 const crypto = require('crypto');
+const shopId = req.body.shopId ? String(req.body.shopId).trim() : '';
+const shopName = req.body.shopName ? String(req.body.shopName).trim() : '';
+const managerEmail = req.body.managerEmail ? String(req.body.managerEmail).trim() : '';
+const city = req.body.city ? String(req.body.city).trim() : '';
+const subLocation = req.body.subLocation ? String(req.body.subLocation).trim() : '';
+
 
 // =========================================================================
 // 2. EXPRESS & MIDDLEWARE INITIALIZATION

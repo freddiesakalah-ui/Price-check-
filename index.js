@@ -414,7 +414,11 @@ app.post('/api/admin/stores', async (req, res) => {
       })
     });
 
-    if (!airtableRes.ok) throw new Error('Failed to create shop in Airtable');
+    if (!airtableRes.ok) {
+    const errorBody = await airtableRes.text();
+    console.error("Airtable API Error Details:", errorBody);
+    throw new Error('Failed to create shop in Airtable');
+}
 
     const emailBody = `Welcome ${shopName}!\n\nShop ID: ${shopId}\nSecurity PIN: ${generatedPin}\n\nTo submit price updates, send a CSV attachment to updates@${MAILGUN_DOMAIN} with Subject: "Weekly Update - PIN: ${generatedPin}"`;
     await sendOutboundEmail(managerEmail, `Shop Setup - PIN: ${generatedPin}`, emailBody);

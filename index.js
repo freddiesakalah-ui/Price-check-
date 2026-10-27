@@ -402,12 +402,12 @@ app.post('/api/admin/stores', async (req, res) => {
       body: JSON.stringify({
         records: [{
           fields: {
-            'Shop ID': parseInt(shopId, 10) || shopId,
-            'Shop Name': shopName.trim(),
-            'Authorized Email': managerEmail.toLowerCase().trim(),
+            'Shop ID': shopId ? (parseInt(shopId, 10) || shopId) : '',
+            'Shop Name': shopName ? String(shopName).trim() : '',
+            'Authorized Email': managerEmail ? String(managerEmail).toLowerCase().trim() : '',
             'Security PIN': generatedPin,
-            'City': city.trim(),
-            'Sub Location': (subLocation || '').trim(),
+            'City': city ? String(city).trim() : '',
+            'Sub Location': subLocation ? String(subLocation).trim() : '',
             'Active': true
           }
         }]

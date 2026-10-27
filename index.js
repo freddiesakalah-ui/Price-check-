@@ -407,7 +407,7 @@ app.post('/api/admin/stores', async (req, res) => {
             'Authorized Email': managerEmail ? String(managerEmail).toLowerCase().trim() : '',
             'Security PIN': generatedPin,
             'City': city ? String(city).trim() : '',
-            'Sub Location': subLocation ? String(subLocation).trim() : '',
+            'sub_location': subLocation ? String(subLocation).trim() : '',
             'Active': true
           }
         }]

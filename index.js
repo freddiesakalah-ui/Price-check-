@@ -402,7 +402,7 @@ app.post('/api/admin/stores', async (req, res) => {
       body: JSON.stringify({
         records: [{
           fields: {
-         // 'Shop ID': shopId ? (parseInt(shopId, 10) || shopId) : '',
+         //  ==THIS LINE OF CODE IS TEMPORALILY DISABLED TO ALLOW AUTO INCREMENT OF SHOPID IN AIRTABLE =='Shop ID': shopId ? (parseInt(shopId, 10) || shopId) : '',
             'Shop Name': shopName ? String(shopName).trim() : '',
             'Authorized Email': managerEmail ? String(managerEmail).toLowerCase().trim() : '',
             'Security PIN': generatedPin,

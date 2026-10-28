@@ -8,6 +8,18 @@ const FormData = require('form-data');
 const crypto = require('crypto');
 const cors = require('cors');
 
+// Add this middleware configuration
+app.use(cors({
+    origin: [
+        'https://freddiesakalah-ui.github.io',
+        'http://localhost:3000'
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+app.use(express.json());
+
 // =========================================================================
 // 2. EXPRESS & MIDDLEWARE INITIALIZATION
 // =========================================================================

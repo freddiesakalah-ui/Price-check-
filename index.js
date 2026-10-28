@@ -6,7 +6,7 @@ const Airtable = require('airtable');
 const multer = require('multer');
 const FormData = require('form-data');
 const crypto = require('crypto');
-
+const cors = require('cors');
 
 // =========================================================================
 // 2. EXPRESS & MIDDLEWARE INITIALIZATION

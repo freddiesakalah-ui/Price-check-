@@ -7,6 +7,8 @@ const multer = require('multer');
 const FormData = require('form-data');
 const crypto = require('crypto');
 const cors = require('cors');
+
+// 1. Initialize Express App ONCE
 const app = express();
 
 // Add this middleware configuration
@@ -19,12 +21,12 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-app.use(express.json());
+//  app.use(express.json());
 
 // =========================================================================
 // 2. EXPRESS & MIDDLEWARE INITIALIZATION
 // =========================================================================
-const app = express();
+// const app = express();
 app.use(express.json({ limit: '10mb' }));
 
 // Memory storage setup for Mailgun CSV attachments

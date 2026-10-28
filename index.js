@@ -465,6 +465,109 @@ async function sendOutboundEmail(to, subject, textBody) {
     console.error('[Mailgun Outbound Error]:', err);
   }
 }
+// =========================================================================
+// PIN RECOVERY & OTP ENDPOINTS
+// =========================================================================
+
+// Temporary in-memory OTP storage (For MVP)
+const otpStore = new Map();
+
+// Helper to generate 6-digit numeric OTP
+function generateOTP() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// 1. REQUEST OTP ENDPOINT
+app.post('/api/auth/pin-reset-request', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({ success: false, message: 'Email is required' });
+        }
+
+        const otp = generateOTP();
+        
+        // Store in memory with 15-minute expiration
+        otpStore.set(email.toLowerCase(), {
+            otp,
+            expiresAt: Date.now() + 15 * 60 * 1000
+        });
+
+        console.log(`[OTP Generated] For: ${email} | Code: ${otp}`);
+
+        // Send OTP via Mailgun using your existing outbound sender
+        await sendOutboundEmail(
+            email.toLowerCase(), 
+            "PriceCheck - PIN Reset Verification Code", 
+            `Your secure 6-digit PIN recovery verification code is: ${otp}\n\nThis code expires in 15 minutes.`
+        );
+
+        return res.status(200).json({ success: true, message: 'Verification OTP sent successfully via Mailgun' });
+    } catch (err) {
+        console.error('Error in pin-reset-request:', err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 2. VERIFY OTP ENDPOINT
+app.post('/api/auth/pin-reset-verify', async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+        const storedRecord = otpStore.get(email?.toLowerCase());
+
+        if (!storedRecord || storedRecord.otp !== otp || Date.now() > storedRecord.expiresAt) {
+            return res.status(400).json({ success: false, message: 'Invalid or expired OTP code' });
+        }
+
+        return res.status(200).json({ success: true, message: 'OTP verified successfully' });
+    } catch (err) {
+        console.error('Error in pin-reset-verify:', err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// 3. UPDATE PIN ENDPOINT (Updates Airtable)
+app.post('/api/auth/pin-reset-update', async (req, res) => {
+    try {
+        const { email, otp, newPin } = req.body;
+        const storedRecord = otpStore.get(email?.toLowerCase());
+
+        if (!storedRecord || storedRecord.otp !== otp || Date.now() > storedRecord.expiresAt) {
+            return res.status(400).json({ success: false, message: 'Session expired. Please request a new OTP.' });
+        }
+
+        if (!newPin || newPin.length !== 4) {
+            return res.status(400).json({ success: false, message: 'PIN must be exactly 4 digits' });
+        }
+
+        // Initialize Airtable base connection
+        const base = new Airtable({ apiKey: process.env.AIRTABLE_TOKEN }).base(process.env.AIRTABLE_BASE_ID || "appwQZHT1w1pDBUa");
+
+        // Find the store record by email
+        const records = await base('Shops').select({
+            filterByFormula: `{Email} = '${email}'`
+        }).firstPage();
+
+        if (records.length === 0) {
+            return res.status(404).json({ success: false, message: 'Store email not found in Airtable records' });
+        }
+
+        const recordId = records[0].id;
+
+        // Update the PIN field in Airtable
+        await base('Shops').update(recordId, {
+            "PIN": newPin
+        });
+
+        // Clear the used OTP from memory
+        otpStore.delete(email.toLowerCase());
+
+        return res.status(200).json({ success: true, message: 'PIN successfully updated in Airtable' });
+    } catch (err) {
+        console.error('Error in pin-reset-update:', err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
 
 // =========================================================================
 // 6. SERVER LISTEN

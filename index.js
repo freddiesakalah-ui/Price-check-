@@ -7,6 +7,7 @@ const multer = require('multer');
 const FormData = require('form-data');
 const crypto = require('crypto');
 const cors = require('cors');
+const app = express();
 
 // Add this middleware configuration
 app.use(cors({

@@ -537,7 +537,7 @@ app.post('/api/auth/pin-reset-update', async (req, res) => {
         }
 
         if (!newPin || newPin.length !== 4) {
-            return res.status(400).json({ success: false, message: 'PIN must be exactly 4 digits' });
+            return res.status(400).json({ success: false, message: 'Security PIN must be exactly 4 digits' });
         }
 
         // Initialize Airtable base connection
@@ -545,24 +545,24 @@ app.post('/api/auth/pin-reset-update', async (req, res) => {
 
         // Find the store record by email
         const records = await base('Shops').select({
-            filterByFormula: `{Email} = '${email}'`
+            filterByFormula: `{Authorized Email} = '${email}'`
         }).firstPage();
 
         if (records.length === 0) {
-            return res.status(404).json({ success: false, message: 'Store email not found in Airtable records' });
+            return res.status(404).json({ success: false, message: 'Shop authorized email not found in Airtable records' });
         }
 
         const recordId = records[0].id;
 
-        // Update the PIN field in Airtable
+        // Update the Security PIN field in Airtable
         await base('Shops').update(recordId, {
-            "PIN": newPin
+            "Security PIN": newPin
         });
 
         // Clear the used OTP from memory
         otpStore.delete(email.toLowerCase());
 
-        return res.status(200).json({ success: true, message: 'PIN successfully updated in Airtable' });
+        return res.status(200).json({ success: true, message: 'Security PIN successfully updated in Airtable' });
     } catch (err) {
         console.error('Error in pin-reset-update:', err);
         return res.status(500).json({ success: false, message: err.message });

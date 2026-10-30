@@ -626,7 +626,7 @@ app.post('/api/prices/bulk-submit', async (req, res) => {
             const airtablePayload = batch.map(item => ({
                 fields: {
                     "Shop": [shopRecord.id],          // Links price to the specific Shop
-                    "Product": [item.productId],    // Links price to the Product
+                    "Product": item.productId,    // Links price to the Product  REMOVED brackets [] so it matches your Single Line Text field
                     "Price": item.newPrice,         // The numeric price value
                     "Updated At": new Date().toISOString()
                 }

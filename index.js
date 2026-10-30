@@ -570,6 +570,87 @@ app.post('/api/auth/pin-reset-update', async (req, res) => {
 });
 
 // =========================================================================
+// SECURE BULK PRICE SUBMISSION ENDPOINT
+// =========================================================================
+
+app.post('/api/prices/bulk-submit', async (req, res) => {
+    try {
+        const { email, pin, updates } = req.body;
+
+        // 1. Validate required fields and array structure
+        if (!email || !pin || !Array.isArray(updates) || updates.length === 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Missing required fields or empty updates array' 
+            });
+        }
+
+        // 2. Initialize Airtable base connection
+        const base = new Airtable({ apiKey: process.env.AIRTABLE_TOKEN }).base(process.env.AIRTABLE_BASE_ID || "appwQZHT1w1pDBUa");
+
+        // 3. Query the Shops table to authenticate the manager
+        const records = await base('Shops').select({
+            filterByFormula: `{Authorized Email} = '${email.toLowerCase()}'`
+        }).firstPage();
+
+        if (records.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Authorized email not found in records' 
+            });
+        }
+
+        const shopRecord = records[0];
+        const storedPin = shopRecord.get('Security PIN');
+
+        // 4. Verify the submitted Security PIN
+        if (!storedPin || String(storedPin) !== String(pin)) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Invalid Security PIN. Authentication failed.' 
+            });
+        }
+
+        // 5. Airtable allows batch creating up to 10 records at a time.
+        // Helper function to split updates into chunks of 10.
+        const chunkArray = (arr, size) => 
+            Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
+                arr.slice(i * size, i * size + size)
+            );
+
+        const batches = chunkArray(updates, 10);
+        const processedRecords = [];
+
+        // 6. Process each batch sequentially
+        for (const batch of batches) {
+            const airtablePayload = batch.map(item => ({
+                fields: {
+                    "Shop": [shopRecord.id],          // Links price to the specific Shop
+                    "Product": [item.productId],    // Links price to the Product
+                    "Price": item.newPrice,         // The numeric price value
+                    "Updated At": new Date().toISOString()
+                }
+            }));
+
+            const createdBatch = await base('Prices').create(airtablePayload);
+            processedRecords.push(...createdBatch);
+        }
+
+        console.log(`[Bulk Price Update Authorized] Manager ${email} successfully updated ${processedRecords.length} items.`);
+
+        return res.status(200).json({ 
+            success: true, 
+            message: `Successfully processed ${processedRecords.length} price updates`,
+            count: processedRecords.length
+        });
+
+    } catch (err) {
+        console.error('Error in bulk price submission:', err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// =========================================================================
 // 6. SERVER LISTEN
 // =========================================================================
 app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));

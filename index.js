@@ -617,7 +617,7 @@ app.post('/api/prices/bulk-submit', async (req, res) => {
                     "Shop": [shopRecord.id],          // Linked Shop record
                     "Product": [realProductRecordId], // Translated linked Product record ID
                     "Price USD": Number(item.newPrice),   // Changed "Price" to match exact column name in the Prices table      
-                    "Updated At": new Date().toISOString()
+                    "Last Modified": new Date().toISOString()
                 }
             });
         }

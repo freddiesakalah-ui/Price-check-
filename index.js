@@ -602,7 +602,7 @@ app.post('/api/prices/bulk-submit', async (req, res) => {
         for (const item of updates) {
             // Look up the product where the AutoNumber/Product field matches item.productId
             const productsRes = await base('Products').select({
-                filterByFormula: `{Product} = ${Number.productId}`,
+              filterByFormula: `{Product} = '${item.productId}'`, // Restored quotes for text-based product matching
                 maxRecords: 1
             }).firstPage();
 

@@ -642,6 +642,106 @@ app.post('/api/prices/bulk-submit', async (req, res) => {
     }
 });
 
+const nodemailer = require('nodemailer');
+
+// Configure email transporter
+const transporter = nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: process.env.EMAIL_PORT,
+    secure: false, // true for 465, false for other ports
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
+
+// 1. Request OTP Endpoint
+app.post('/api/auth/request-otp', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ success: false, message: 'Email is required.' });
+
+        // Find shop by email
+        const shops = await base('Shops').select({
+            filterByFormula: `{Email} = '${email}'`,
+            maxRecords: 1
+        }).firstPage();
+
+        if (shops.length === 0) {
+            return res.status(404).json({ success: false, message: 'Manager email not found.' });
+        }
+
+        const shopRecord = shops[0];
+        
+        // Generate 6-digit OTP & 10-minute expiry
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+        // Save OTP to Airtable record
+        await base('Shops').update(shopRecord.id, {
+            "OTP": otp,
+            "OTP Expiry": otpExpiry
+        });
+
+        // Send Email
+        await transporter.sendMail({
+            from: `"PriceCheck Security" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: 'Your PriceCheck Security PIN Recovery OTP',
+            text: `Your One-Time Password (OTP) for PIN recovery is: ${otp}. It expires in 10 minutes.`
+        });
+
+        res.json({ success: true, message: 'OTP sent successfully to your email.' });
+    } catch (error) {
+        console.error('OTP Request Error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error sending OTP.' });
+    }
+});
+
+// 2. Verify OTP & Reset PIN Endpoint
+app.post('/api/auth/reset-pin', async (req, res) => {
+    try {
+        const { email, otp, newPin } = req.body;
+        if (!email || !otp || !newPin) {
+            return res.status(400).json({ success: false, message: 'All fields are required.' });
+        }
+
+        const shops = await base('Shops').select({
+            filterByFormula: `{Email} = '${email}'`,
+            maxRecords: 1
+        }).firstPage();
+
+        if (shops.length === 0) {
+            return res.status(404).json({ success: false, message: 'Manager email not found.' });
+        }
+
+        const shopRecord = shops[0];
+        const storedOtp = shopRecord.get('OTP');
+        const expiryTime = new Date(shopRecord.get('OTP Expiry'));
+
+        // Validate OTP and Expiry
+        if (!storedOtp || storedOtp !== otp.trim()) {
+            return res.status(401).json({ success: false, message: 'Invalid OTP code.' });
+        }
+
+        if (new Date() > expiryTime) {
+            return res.status(401).json({ success: false, message: 'OTP has expired. Please request a new one.' });
+        }
+
+        // Update PIN and clear OTP fields
+        await base('Shops').update(shopRecord.id, {
+            "Security PIN": newPin.trim(),
+            "OTP": "",
+            "OTP Expiry": null
+        });
+
+        res.json({ success: true, message: 'Security PIN successfully reset!' });
+    } catch (error) {
+        console.error('PIN Reset Error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error resetting PIN.' });
+    }
+});
+
 // =========================================================================
 // 6. SERVER LISTEN
 // =========================================================================

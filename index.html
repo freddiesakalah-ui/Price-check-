@@ -343,19 +343,82 @@
       }
     });
 
-    // Placeholder for OTP Request Logic (hook up to your backend OTP route whenever ready)
-    const otpBtn = document.getElementById('otpBtn');
+   const requestOtpBtn = document.getElementById('requestOtpBtn');
+    const resetPinBtn = document.getElementById('resetPinBtn');
     const otpStatus = document.getElementById('otpStatus');
+    
+    let targetEmail = '';
 
-    otpBtn.addEventListener('click', () => {
-      const otpEmail = document.getElementById('otpEmail').value.trim();
-      if (!otpEmail) {
+    // Step 1: Request OTP
+    requestOtpBtn.addEventListener('click', async () => {
+      targetEmail = document.getElementById('otpEmail').value.trim();
+      if (!targetEmail) {
         showStatus(otpStatus, 'Please enter your manager email.', 'error');
         return;
       }
-      showStatus(otpStatus, 'OTP verification request sent (Placeholder active).', 'success');
+
+      requestOtpBtn.disabled = true;
+      requestOtpBtn.innerText = 'Sending OTP...';
+
+      try {
+        const res = await fetch('https://price-check-webhook.onrender.com/api/auth/request-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: targetEmail })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          showStatus(otpStatus, 'OTP sent! Check your inbox for the code.', 'success');
+          document.getElementById('step1Container').style.display = 'none';
+          document.getElementById('step2Container').style.display = 'block';
+        } else {
+          showStatus(otpStatus, data.message || 'Failed to send OTP.', 'error');
+        }
+      } catch (err) {
+        showStatus(otpStatus, 'Network error connecting to backend.', 'error');
+      } finally {
+        requestOtpBtn.disabled = false;
+        requestOtpBtn.innerText = 'Send Verification OTP';
+      }
     });
 
+    // Step 2: Verify OTP and Reset PIN
+    resetPinBtn.addEventListener('click', async () => {
+      const otp = document.getElementById('receivedOtp').value.trim();
+      const newPin = document.getElementById('newPin').value.trim();
+
+      if (!otp || !newPin) {
+        showStatus(otpStatus, 'Please enter both the OTP and your new PIN.', 'error');
+        return;
+      }
+
+      resetPinBtn.disabled = true;
+      resetPinBtn.innerText = 'Resetting PIN...';
+
+      try {
+        const res = await fetch('https://price-check-webhook.onrender.com/api/auth/reset-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: targetEmail, otp, newPin })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          showStatus(otpStatus, 'Success! Your PIN has been reset. You can now log in.', 'success');
+          setTimeout(() => {
+            location.reload(); // Refresh page back to login/bulk prices tab
+          }, 3000);
+        } else {
+          showStatus(otpStatus, data.message || 'Invalid or expired OTP.', 'error');
+        }
+      } catch (err) {
+        showStatus(otpStatus, 'Network error connecting to backend.', 'error');
+      } finally {
+        resetPinBtn.disabled = false;
+        resetPinBtn.innerText = 'Verify & Reset PIN';
+      }
+    });
     function showStatus(element, msg, type) {
       element.innerText = msg;
       element.className = 'statusMessage ' + (type === 'success' ? 'status-success' : 'status-error');

@@ -245,20 +245,35 @@
       <div id="bulkStatus" class="statusMessage"></div>
     </div>
 
-    <!-- TAB 2: PIN RECOVERY / OTP CONSOLE (Your Original View) -->
+   <!-- TAB 2: PIN RECOVERY / OTP CONSOLE -->
     <div id="otpTab" class="tab-content">
       <h1>PIN Recovery Console</h1>
-      <p class="subtitle">Request OTP Verification for PIN Reset</p>
+      <p class="subtitle">Securely Reset Your Manager PIN via Email OTP</p>
 
-      <div class="form-group">
-        <label for="otpEmail">Authorized Manager Email</label>
-        <input type="email" id="otpEmail" placeholder="fredrick.sakala@outlook.com" required />
+      <!-- Step 1: Request OTP Form -->
+      <div id="step1Container">
+        <div class="form-group">
+          <label for="otpEmail">Authorized Manager Email</label>
+          <input type="email" id="otpEmail" placeholder="fredrick.sakala@outlook.com" required />
+        </div>
+        <button type="button" class="btn-submit" id="requestOtpBtn">Send Verification OTP</button>
       </div>
 
-      <button type="button" class="btn-submit" id="otpBtn">Send Verification OTP</button>
+      <!-- Step 2: Verify OTP & Set New PIN (Initially Hidden) -->
+      <div id="step2Container" style="display: none; margin-top: 16px;">
+        <div class="form-group">
+          <label for="receivedOtp">Enter 6-Digit OTP Code</label>
+          <input type="text" id="receivedOtp" placeholder="123456" maxlength="6" />
+        </div>
+        <div class="form-group">
+          <label for="newPin">Enter New Security PIN</label>
+          <input type="password" id="newPin" placeholder="••••" maxlength="6" />
+        </div>
+        <button type="button" class="btn-submit" id="resetPinBtn">Verify & Reset PIN</button>
+      </div>
+
       <div id="otpStatus" class="statusMessage"></div>
     </div>
-  </div>
 
   <script>
     // Tab Switcher Logic

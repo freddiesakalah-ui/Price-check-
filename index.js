@@ -646,9 +646,9 @@ const nodemailer = require('nodemailer');
 
 // Configure email transporter
 const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: process.env.EMAIL_PORT,
-    secure: true, // true for 465, false for other ports: // Uses SSL for port 465, which bypasses Render's port 587 block
+    host: 'smtp.gmail.com',
+   port: 465,
+    secure: true, // Uses SSL for port 465, which bypasses Render's port 587 block
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS

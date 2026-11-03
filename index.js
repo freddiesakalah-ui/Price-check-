@@ -648,7 +648,7 @@ const nodemailer = require('nodemailer');
 const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
     port: process.env.EMAIL_PORT,
-    secure: false, // true for 465, false for other ports
+    secure: true, // true for 465, false for other ports: // Uses SSL for port 465, which bypasses Render's port 587 block
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS

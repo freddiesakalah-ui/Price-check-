@@ -642,7 +642,7 @@ app.post('/api/prices/bulk-submit', async (req, res) => {
     }
 });
 
-const nodemailer = require('nodemailer');
+//const nodemailer = require('nodemailer');
 
 // Configure email transporter
 const { Resend } = require('resend');

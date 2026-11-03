@@ -13,6 +13,6 @@
   "form-data": "^4.0.0",
   "cors": "^2.8.5",
   "nodemailer": "^6.9.13",
-    "resend"
+    "resend": "^4.0.0"
   }
 }

@@ -705,9 +705,9 @@ app.post('/api/auth/reset-pin', async (req, res) => {
         if (!email || !otp || !newPin) {
             return res.status(400).json({ success: false, message: 'All fields are required.' });
         }
-
+       // 1. In /api/auth/request-otp and /api/auth/reset-pin
         const shops = await base('Shops').select({
-            filterByFormula: `{Email} = '${email}'`,
+            filterByFormula: `{Authorized Email} = '${email}'`,
             maxRecords: 1
         }).firstPage();
 

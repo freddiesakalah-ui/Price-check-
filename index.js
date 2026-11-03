@@ -663,7 +663,7 @@ app.post('/api/auth/request-otp', async (req, res) => {
 
         // Find shop by email
         const shops = await base('Shops').select({
-            filterByFormula: `{Email} = '${email}'`,
+            filterByFormula: `{Authorized Email} = '${email}'`,
             maxRecords: 1
         }).firstPage();
 

@@ -645,14 +645,15 @@ app.post('/api/prices/bulk-submit', async (req, res) => {
 const nodemailer = require('nodemailer');
 
 // Configure email transporter
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-   port: 465,
-    secure: true, // Uses SSL for port 465, which bypasses Render's port 587 block
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
+const { Resend } = require('resend');
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Inside your OTP Request endpoint:
+await resend.emails.send({
+    from: 'onboarding@resend.dev', // Resend's free testing sender
+    to: email,
+    subject: 'Your PriceCheck Security PIN Recovery OTP',
+    html: `<p>Your One-Time Password (OTP) for PIN recovery is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`
 });
 
 // 1. Request OTP Endpoint

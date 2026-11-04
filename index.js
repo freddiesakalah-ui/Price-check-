@@ -739,6 +739,61 @@ app.post('/api/auth/reset-pin', async (req, res) => {
     }
 });
 
+// Admin Endpoint to Create a New Shop with complete fields
+app.post('/api/admin/create-shop', async (req, res) => {
+    try {
+        const { 
+            shopId, 
+            shopName, 
+            managerName, 
+            authorizedEmail, 
+            contactPhone, 
+            city, 
+            sublocation, 
+            initialPin 
+        } = req.body;
+
+        // Verify Admin Key
+        const adminKey = req.headers['x-admin-key'] || req.body.adminKey;
+        if (!adminKey || adminKey !== process.env.ADMIN_SECRET_KEY) {
+            return res.status(401).json({ success: false, message: 'Unauthorized admin access.' });
+        }
+
+        if (!shopName || !authorizedEmail) {
+            return res.status(400).json({ success: false, message: 'Shop Name and Authorized Email are required.' });
+        }
+
+        // Create record in Airtable Shops table with exact column names
+        const createdRecords = await base('Shops').create([
+            {
+                fields: {
+                    "Shop ID": shopId ? parseInt(shopId, 10) : undefined,
+                    "Shop Name": shopName,
+                    "Manager Fullname": managerName || '',
+                    "Authorized Email": authorizedEmail,
+                    "Contact Phone": contactPhone || '',
+                    "City": city || '',
+                    "sub_location": sublocation || '',
+                    "Security PIN": initialPin || '1234',
+                    "Active": true, // Maintains active state functionality
+                    "Failed Attempts": 0
+                }
+            }
+        ]);
+
+        return res.json({ 
+            success: true, 
+            message: 'Shop created successfully.', 
+            recordId: createdRecords[0].id 
+        });
+
+    } catch (error) {
+        console.error('Create shop error:', error);
+        return res.status(500).json({ success: false, message: 'Internal server error creating shop.' });
+    }
+});
+
+
 // =========================================================================
 // 6. SERVER LISTEN
 // =========================================================================

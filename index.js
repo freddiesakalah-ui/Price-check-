@@ -3,10 +3,13 @@
 // =========================================================================
 const express = require('express');
 const Airtable = require('airtable');
+const { Resend } = require('resend');
+const resend = new Resend(process.env.RESEND_API_KEY);
 const multer = require('multer');
 const FormData = require('form-data');
 const crypto = require('crypto');
 const cors = require('cors');
+
 
 // 1. Initialize Express App ONCE
 const app = express();
@@ -642,19 +645,6 @@ app.post('/api/prices/bulk-submit', async (req, res) => {
     }
 });
 
-//const nodemailer = require('nodemailer');
-
-// Configure email transporter
-const { Resend } = require('resend');
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-// Inside your OTP Request endpoint:
-await resend.emails.send({
-    from: 'onboarding@resend.dev', // Resend's free testing sender
-    to: email,
-    subject: 'Your PriceCheck Security PIN Recovery OTP',
-    html: `<p>Your One-Time Password (OTP) for PIN recovery is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`
-});
 
 // 1. Request OTP Endpoint
 app.post('/api/auth/request-otp', async (req, res) => {
@@ -684,12 +674,18 @@ app.post('/api/auth/request-otp', async (req, res) => {
             "OTP Expiry": otpExpiry
         });
 
-        // Send Email
-        await transporter.sendMail({
-            from: `"PriceCheck Security" <${process.env.EMAIL_USER}>`,
+       // Save OTP to Airtable record
+        await base('Shops').update(shopRecord.id, {
+            "OTP": otp,
+            "OTP Expiry": otpExpiry
+        });
+
+        // Send Email via Resend
+        await resend.emails.send({
+            from: 'onboarding@resend.dev',
             to: email,
             subject: 'Your PriceCheck Security PIN Recovery OTP',
-            text: `Your One-Time Password (OTP) for PIN recovery is: ${otp}. It expires in 10 minutes.`
+            html: `<p>Your One-Time Password (OTP) for PIN recovery is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`
         });
 
         res.json({ success: true, message: 'OTP sent successfully to your email.' });

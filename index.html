@@ -425,5 +425,94 @@
       element.style.display = 'block';
     }
   </script>
+
+
+ <!-- Admin Shop Creation Panel -->
+<div class="admin-panel" style="max-width: 550px; margin: 40px auto; padding: 25px; background: #1e293b; border-radius: 10px; color: white; font-family: sans-serif;">
+    <h2>System Admin: Register New Shop</h2>
+    <form id="createShopForm">
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px;">Admin Secret Key</label>
+            <input type="password" id="adminKey" required style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #475569; background: #0f172a; color: white;">
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px;">Shop ID (Number)</label>
+            <input type="number" id="shopId" placeholder="e.g. 6" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #475569; background: #0f172a; color: white;">
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px;">Shop Name</label>
+            <input type="text" id="shopName" required style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #475569; background: #0f172a; color: white;">
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px;">Manager Fullname </label>
+            <input type="text" id="managerName" placeholder="e.g. John Doe" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #475569; background: #0f172a; color: white;">
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px;">Authorized Email</label>
+            <input type="email" id="authorizedEmail" required style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #475569; background: #0f172a; color: white;">
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px;">Contact Phone</label>
+            <input type="text" id="contactPhone" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #475569; background: #0f172a; color: white;">
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px;">City</label>
+            <input type="text" id="city" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #475569; background: #0f172a; color: white;">
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px;">Sub-location</label>
+            <input type="text" id="sublocation" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #475569; background: #0f172a; color: white;">
+        </div>
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 5px;">Initial Security PIN</label>
+            <input type="text" id="initialPin" value="1234" required style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #475569; background: #0f172a; color: white;">
+        </div>
+        <button type="submit" style="width: 100%; padding: 10px; background: #10b981; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Register Shop</button>
+    </form>
+    <p id="adminResponseMsg" style="margin-top: 15px; font-weight: bold; text-align: center;"></p>
+</div>
+
+<script>
+document.getElementById('createShopForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msgEl = document.getElementById('adminResponseMsg');
+    msgEl.style.color = '#cbd5e1';
+    msgEl.innerText = 'Registering shop...';
+
+    const payload = {
+        adminKey: document.getElementById('adminKey').value,
+        shopId: document.getElementById('shopId').value,
+        shopName: document.getElementById('shopName').value,
+        managerName: document.getElementById('managerName').value,
+        authorizedEmail: document.getElementById('authorizedEmail').value,
+        contactPhone: document.getElementById('contactPhone').value,
+        city: document.getElementById('city').value,
+        sublocation: document.getElementById('sublocation').value,
+        initialPin: document.getElementById('initialPin').value
+    };
+
+    try {
+        const response = await fetch('https://price-check-webhook.onrender.com/api/admin/create-shop', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            msgEl.style.color = '#34d399';
+            msgEl.innerText = 'Shop registered successfully!';
+            document.getElementById('createShopForm').reset();
+            document.getElementById('initialPin').value = '1234';
+        } else {
+            msgEl.style.color = '#f87171';
+            msgEl.innerText = 'Error: ' + data.message;
+        }
+    } catch (err) {
+        msgEl.style.color = '#f87171';
+        msgEl.innerText = 'Network error connecting to backend server.';
+    }
+});
+</script>   
 </body>
 </html>

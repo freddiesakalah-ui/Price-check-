@@ -772,6 +772,7 @@ app.post('/api/admin/create-shop', async (req, res) => {
                     "Manager Fullname": managerName || '',
                     "Authorized Email": authorizedEmail,
                     "Contact Phone": contactPhone || '',
+                    "Landline Number": landlineNumber || '', // Added Landline field
                     "City": city || '',
                     "sub_location": sublocation || '',
                     "Security PIN": initialPin || '1234',

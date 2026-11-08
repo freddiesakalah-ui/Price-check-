@@ -748,6 +748,7 @@ app.post('/api/admin/create-shop', async (req, res) => {
             managerName, 
             authorizedEmail, 
             contactPhone, 
+            landlineNumber,
             city, 
             sublocation, 
             initialPin 

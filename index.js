@@ -794,6 +794,115 @@ app.post('/api/admin/create-shop', async (req, res) => {
 });
 
 
+
+
+
+// ==========================================
+// SECURITY-DRIVEN ADMIN API ENDPOINTS
+// ==========================================
+
+// 1. Analytics & Reporting Hub Metrics
+app.get('/api/admin/analytics', async (req, res) => {
+    try {
+        const adminKey = req.headers['x-admin-key'];
+        if (!adminKey || adminKey !== process.env.ADMIN_SECRET_KEY) {
+            return res.status(401).json({ success: false, message: 'Unauthorized.' });
+        }
+
+        // Fetch shops and system users from Airtable
+        const shops = await base('Shops').select().all();
+        const users = await base('SystemUsers').select().all();
+
+        const totalShops = shops.length;
+        const activeShops = shops.filter(s => s.get('Active') === true || s.get('Status') === 'Active').length;
+        const lockedShops = shops.filter(s => s.get('Status') === 'Disabled' || (s.get('Failed Attempts') || 0) >= 3).length;
+        const totalSystemUsers = users.length;
+
+        return res.json({
+            success: true,
+            metrics: {
+                totalShops,
+                activeShops,
+                lockedShops,
+                totalSystemUsers
+            }
+        });
+    } catch (error) {
+        console.error('Analytics error:', error);
+        return res.status(500).json({ success: false, message: 'Error fetching analytics.' });
+    }
+});
+
+// 2. Fetch All Shops (For Oversight & Unlock Panel)
+app.get('/api/admin/shops', async (req, res) => {
+    try {
+        const adminKey = req.headers['x-admin-key'];
+        if (!adminKey || adminKey !== process.env.ADMIN_SECRET_KEY) {
+            return res.status(401).json({ success: false, message: 'Unauthorized.' });
+        }
+
+        const records = await base('Shops').select().all();
+        const shops = records.map(record => ({
+            id: record.id,
+            shopId: record.get('Shop ID'),
+            shopName: record.get('Shop Name'),
+            managerName: record.get('Manager Fullname and Surname') || '',
+            email: record.get('Authorized Email'),
+            status: record.get('Status') || 'Active',
+            failedAttempts: record.get('Failed Attempts') || 0,
+            city: record.get('City') || ''
+        }));
+
+        return res.json({ success: true, shops });
+    } catch (error) {
+        console.error('Fetch shops error:', error);
+        return res.status(500).json({ success: false, message: 'Error fetching shops.' });
+    }
+});
+
+// 3. Fetch All System Users (For Access Control)
+app.get('/api/admin/system-users', async (req, res) => {
+    try {
+        const adminKey = req.headers['x-admin-key'];
+        if (!adminKey || adminKey !== process.env.ADMIN_SECRET_KEY) {
+            return res.status(401).json({ success: false, message: 'Unauthorized.' });
+        }
+
+        const records = await base('SystemUsers').select().all();
+        const users = records.map(record => ({
+            id: record.id,
+            email: record.get('Email'),
+            fullname: record.get('Fullname'),
+            role: record.get('Role'),
+            active: record.get('Active') !== false
+        }));
+
+        return res.json({ success: true, users });
+    } catch (error) {
+        console.error('Fetch system users error:', error);
+        return res.status(500).json({ success: false, message: 'Error fetching system users.' });
+    }
+});
+
+// 4. Toggle System User Status (Enable/Disable Admin Access)
+app.post('/api/admin/toggle-user-status', async (req, res) => {
+    try {
+        const { adminKey, userId, activeState } = req.body;
+        if (!adminKey || adminKey !== process.env.ADMIN_SECRET_KEY) {
+            return res.status(401).json({ success: false, message: 'Unauthorized.' });
+        }
+
+        await base('SystemUsers').update(userId, {
+            "Active": activeState
+        });
+
+        return res.json({ success: true, message: 'System user status updated.' });
+    } catch (error) {
+        console.error('Toggle user status error:', error);
+        return res.status(500).json({ success: false, message: 'Error updating user status.' });
+    }
+});
+
 // =========================================================================
 // 6. SERVER LISTEN
 // =========================================================================

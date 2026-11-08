@@ -783,7 +783,7 @@ app.post('/api/admin/create-shop', async (req, res) => {
 
         return res.json({ 
             success: true, 
-            message: 'Shop created successfully.', 
+            message: `Shop : ${shopName} registered successfully!`,
             recordId: createdRecords[0].id 
         });
 

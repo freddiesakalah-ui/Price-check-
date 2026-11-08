@@ -793,7 +793,6 @@ async function loadAnalytics() {
     } catch (err) { console.error(err); }
 }
 
-// Load Shops for Oversight & Unlock
 async function loadShopsOversight() {
     try {
         const res = await fetch('https://price-check-webhook.onrender.com/api/admin/shops', {
@@ -808,34 +807,22 @@ async function loadShopsOversight() {
                 const isLocked = shop.status === 'Disabled' || shop.failedAttempts >= 3;
                 const tr = document.createElement('tr');
                 tr.style.borderBottom = '1px solid #1e293b';
+                
+                // Escape shop object safely for inline onclick handler
+                const shopJson = JSON.stringify(shop).replace(/"/g, '&quot;');
+
                 tr.innerHTML = `
                     <td style="padding: 10px;">${shop.shopName}</td>
                     <td style="padding: 10px;">${shop.managerName}</td>
                     <td style="padding: 10px; color: ${isLocked ? '#f87171' : '#34d399'}; font-weight: bold;">${shop.status}</td>
                     <td style="padding: 10px;">${shop.failedAttempts}</td>
-                    <td style="padding: 10px;">
-                        ${isLocked ? `<button onclick="unlockShop('${shop.id}')" style="padding: 5px 10px; background: #f59e0b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Unblock</button>` : '<span style="color: #64748b;">Normal</span>'}
+                    <td style="padding: 10px; display: flex; gap: 8px; align-items: center;">
+                        <button onclick="populateEditForm(${shopJson})" style="padding: 5px 10px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Edit</button>
+                        ${isLocked ? `<button onclick="unlockShop('${shop.id}')" style="padding: 5px 10px; background: #f59e0b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Unblock</button>` : ''}
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
-        }
-    } catch (err) { console.error(err); }
-}
-
-// 1-Click Shop Unlock Function
-async function unlockShop(shopId) {
-    try {
-        const res = await fetch('https://price-check-webhook.onrender.com/api/admin/reactivate-shop', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ adminKey: currentAdminKey, shopId })
-        });
-        const data = await res.json();
-        if (data.success) {
-            loadShopsOversight();
-        } else {
-            alert('Failed to unlock shop.');
         }
     } catch (err) { console.error(err); }
 }

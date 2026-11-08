@@ -767,7 +767,7 @@ app.post('/api/admin/create-shop', async (req, res) => {
         const createdRecords = await base('Shops').create([
             {
                 fields: {
-                    "Shop ID": shopId ? parseInt(shopId, 10) : undefined,
+                  //  "Shop ID": shopId ? parseInt(shopId, 10) : undefined,
                     "Shop Name": shopName,
                     "Manager Fullname": managerName || '',
                     "Authorized Email": authorizedEmail,

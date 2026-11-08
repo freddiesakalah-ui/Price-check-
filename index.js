@@ -797,7 +797,41 @@ app.post('/api/admin/create-shop', async (req, res) => {
 
 
 
+// Update Shop Record Endpoint (Protected by Master Admin Key)
+app.post('/api/admin/update-shop', async (req, res) => {
+    try {
+        const { adminKey, recordId, managerName, authorizedEmail, contactPhone, landlineNumber, city, sublocation, status } = req.body;
 
+        if (!adminKey || adminKey !== process.env.ADMIN_SECRET_KEY) {
+            return res.status(401).json({ success: false, message: 'Unauthorized master admin key.' });
+        }
+
+        if (!recordId) {
+            return res.status(400).json({ success: false, message: 'Shop record ID is required.' });
+        }
+
+        // Update the record in Airtable
+        const updatedRecord = await base('Shops').update(recordId, {
+            "Manager Fullname and Surname": managerName,
+            "Authorized Email": authorizedEmail,
+            "Contact Phone": contactPhone,
+            "Landline Number": landlineNumber,
+            "City": city,
+            "sub_location": sublocation,
+            "Status": status
+        });
+
+        return res.json({ 
+            success: true, 
+            message: `Shop records updated successfully!`, 
+            shopId: updatedRecord.id 
+        });
+
+    } catch (error) {
+        console.error('Update shop error:', error);
+        return res.status(500).json({ success: false, message: 'Internal server error updating shop records.' });
+    }
+});
 
 // ==========================================
 // SECURITY-DRIVEN ADMIN API ENDPOINTS

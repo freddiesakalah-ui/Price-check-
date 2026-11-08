@@ -513,6 +513,308 @@ document.getElementById('createShopForm').addEventListener('submit', async (e) =
         msgEl.innerText = 'Network error connecting to backend server.';
     }
 });
-</script>   
+</script>  
+
+
+
+<!-- ========================================== -->
+<!-- UNIFIED SECURITY & ADMIN DASHBOARD UI -->
+<!-- ========================================== -->
+<div class="admin-suite-container" style="max-width: 900px; margin: 40px auto; padding: 25px; background: #0f172a; border-radius: 12px; color: white; font-family: sans-serif; border: 1px solid #334155;">
+    
+    <h2 style="border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px;">🛡️ PriceCheck Security & Admin Suite</h2>
+
+    <!-- LOGIN GATEWAY -->
+    <div id="masterLoginCard">
+        <h3>System Admin Authentication</h3>
+        <p style="color: #94a3b8; font-size: 14px;">Enter your Master Admin Key or credentials to access the management control center.</p>
+        <form id="unifiedLoginForm" style="margin-top: 15px;">
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px;">Master Admin Secret Key</label>
+                <input type="password" id="masterKeyInput" required style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #1e293b; color: white;">
+            </div>
+            <button type="submit" style="width: 100%; padding: 10px; background: #3b82f6; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">Access Control Suite</button>
+        </form>
+        <p id="masterLoginMsg" style="margin-top: 10px; font-weight: bold; text-align: center;"></p>
+    </div>
+
+    <!-- MAIN ADMIN DASHBOARD (Hidden until authenticated) -->
+    <div id="adminDashboardContent" style="display: none;">
+        
+        <!-- Navigation Tabs -->
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #334155; padding-bottom: 10px;">
+            <button onclick="switchTab('analytics')" class="tab-btn" style="padding: 8px 15px; background: #3b82f6; color: white; border: none; border-radius: 5px; cursor: pointer;">Analytics & Overview</button>
+            <button onclick="switchTab('shops')" class="tab-btn" style="padding: 8px 15px; background: #1e293b; color: white; border: none; border-radius: 5px; cursor: pointer;">Shop Oversight & Unlock</button>
+            <button onclick="switchTab('users')" class="tab-btn" style="padding: 8px 15px; background: #1e293b; color: white; border: none; border-radius: 5px; cursor: pointer;">System Users & Access</button>
+        </div>
+
+        <!-- TAB 1: ANALYTICS & REPORTING HUB -->
+        <div id="tab-analytics" class="dashboard-tab">
+            <h3>📊 Operational Analytics Hub</h3>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 15px;">
+                <div style="background: #1e293b; padding: 15px; border-radius: 8px; text-align: center;">
+                    <h4 style="color: #94a3b8; margin: 0;">Total Shops</h4>
+                    <p id="statTotalShops" style="font-size: 24px; font-weight: bold; margin: 5px 0 0;">-</p>
+                </div>
+                <div style="background: #1e293b; padding: 15px; border-radius: 8px; text-align: center;">
+                    <h4 style="color: #94a3b8; margin: 0;">Active Shops</h4>
+                    <p id="statActiveShops" style="font-size: 24px; font-weight: bold; color: #34d399; margin: 5px 0 0;">-</p>
+                </div>
+                <div style="background: #1e293b; padding: 15px; border-radius: 8px; text-align: center;">
+                    <h4 style="color: #94a3b8; margin: 0;">Locked / Disabled</h4>
+                    <p id="statLockedShops" style="font-size: 24px; font-weight: bold; color: #f87171; margin: 5px 0 0;">-</p>
+                </div>
+                <div style="background: #1e293b; padding: 15px; border-radius: 8px; text-align: center;">
+                    <h4 style="color: #94a3b8; margin: 0;">System Users</h4>
+                    <p id="statTotalUsers" style="font-size: 24px; font-weight: bold; color: #60a5fa; margin: 5px 0 0;">-</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: SHOP MANAGER OVERSIGHT & LOCKOUT MANAGEMENT -->
+        <div id="tab-shops" class="dashboard-tab" style="display: none;">
+            <h3>🔒 Shop Manager Oversight & Lockout Management</h3>
+            <p style="color: #94a3b8; font-size: 14px;">View shop statuses and instantly unblock accounts locked out due to failed PIN attempts.</p>
+            <div style="overflow-x: auto; margin-top: 15px;">
+                <table id="shopsTable" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+                    <thead>
+                        <tr style="background: #1e293b; color: #94a3b8;">
+                            <th style="padding: 10px;">Shop Name</th>
+                            <th style="padding: 10px;">Manager</th>
+                            <th style="padding: 10px;">Status</th>
+                            <th style="padding: 10px;">Failed Attempts</th>
+                            <th style="padding: 10px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="shopsTableBody">
+                        <!-- Populated dynamically via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB 3: SYSTEM USER MANAGEMENT & ACCESS CONTROL -->
+        <div id="tab-users" class="dashboard-tab" style="display: none;">
+            <h3>👥 System Users & Role Access Control</h3>
+            <form id="createSystemUserForm" style="background: #1e293b; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h4>Generate New System Admin / Support User</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                    <input type="text" id="newAdminName" placeholder="Full Name" required style="padding: 8px; background: #0f172a; border: 1px solid #475569; color: white; border-radius: 5px;">
+                    <input type="email" id="newAdminEmail" placeholder="Email Address" required style="padding: 8px; background: #0f172a; border: 1px solid #475569; color: white; border-radius: 5px;">
+                    <input type="password" id="newAdminPassword" placeholder="Password" required style="padding: 8px; background: #0f172a; border: 1px solid #475569; color: white; border-radius: 5px;">
+                    <select id="newAdminRole" style="padding: 8px; background: #0f172a; border: 1px solid #475569; color: white; border-radius: 5px;">
+                        <option value="System Admin">System Admin</option>
+                        <option value="Support">Support</option>
+                    </select>
+                </div>
+                <button type="submit" style="margin-top: 10px; padding: 8px 15px; background: #10b981; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Create User</button>
+                <span id="createUserMsg" style="margin-left: 10px; font-size: 14px;"></span>
+            </form>
+
+            <h4 style="margin-top: 20px;">Existing System Users</h4>
+            <div style="overflow-x: auto;">
+                <table id="usersTable" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+                    <thead>
+                        <tr style="background: #1e293b; color: #94a3b8;">
+                            <th style="padding: 10px;">Full Name</th>
+                            <th style="padding: 10px;">Email</th>
+                            <th style="padding: 10px;">Role</th>
+                            <th style="padding: 10px;">Access State</th>
+                            <th style="padding: 10px;">Toggle Access</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <!-- Populated dynamically via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+let currentAdminKey = '';
+
+// Authentication Gateway Handler
+document.getElementById('unifiedLoginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const key = document.getElementById('masterKeyInput').value;
+    const msg = document.getElementById('masterLoginMsg');
+    msg.innerText = 'Verifying key...';
+
+    try {
+        const res = await fetch('https://price-check-webhook.onrender.com/api/admin/analytics', {
+            headers: { 'x-admin-key': key }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            currentAdminKey = key;
+            document.getElementById('masterLoginCard').style.display = 'none';
+            document.getElementById('adminDashboardContent').style.display = 'block';
+            loadAnalytics();
+        } else {
+            msg.style.color = '#f87171';
+            msg.innerText = 'Invalid Master Admin Key.';
+        }
+    } catch (err) {
+        msg.style.color = '#f87171';
+        msg.innerText = 'Connection error to backend.';
+    }
+});
+
+// Tab Switcher
+function switchTab(tabName) {
+    document.querySelectorAll('.dashboard-tab').forEach(el => el.style.display = 'none');
+    document.getElementById('tab-' + tabName).style.display = 'block';
+    
+    if (tabName === 'analytics') loadAnalytics();
+    if (tabName === 'shops') loadShopsOversight();
+    if (tabName === 'users') loadSystemUsers();
+}
+
+// Load Analytics Metrics
+async function loadAnalytics() {
+    try {
+        const res = await fetch('https://price-check-webhook.onrender.com/api/admin/analytics', {
+            headers: { 'x-admin-key': currentAdminKey }
+        });
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('statTotalShops').innerText = data.metrics.totalShops;
+            document.getElementById('statActiveShops').innerText = data.metrics.activeShops;
+            document.getElementById('statLockedShops').innerText = data.metrics.lockedShops;
+            document.getElementById('statTotalUsers').innerText = data.metrics.totalSystemUsers;
+        }
+    } catch (err) { console.error(err); }
+}
+
+// Load Shops for Oversight & Unlock
+async function loadShopsOversight() {
+    try {
+        const res = await fetch('https://price-check-webhook.onrender.com/api/admin/shops', {
+            headers: { 'x-admin-key': currentAdminKey }
+        });
+        const data = await res.json();
+        const tbody = document.getElementById('shopsTableBody');
+        tbody.innerHTML = '';
+
+        if (data.success) {
+            data.shops.forEach(shop => {
+                const isLocked = shop.status === 'Disabled' || shop.failedAttempts >= 3;
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid #1e293b';
+                tr.innerHTML = `
+                    <td style="padding: 10px;">${shop.shopName}</td>
+                    <td style="padding: 10px;">${shop.managerName}</td>
+                    <td style="padding: 10px; color: ${isLocked ? '#f87171' : '#34d399'}; font-weight: bold;">${shop.status}</td>
+                    <td style="padding: 10px;">${shop.failedAttempts}</td>
+                    <td style="padding: 10px;">
+                        ${isLocked ? `<button onclick="unlockShop('${shop.id}')" style="padding: 5px 10px; background: #f59e0b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Unblock</button>` : '<span style="color: #64748b;">Normal</span>'}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    } catch (err) { console.error(err); }
+}
+
+// 1-Click Shop Unlock Function
+async function unlockShop(shopId) {
+    try {
+        const res = await fetch('https://price-check-webhook.onrender.com/api/admin/reactivate-shop', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminKey: currentAdminKey, shopId })
+        });
+        const data = await res.json();
+        if (data.success) {
+            loadShopsOversight();
+        } else {
+            alert('Failed to unlock shop.');
+        }
+    } catch (err) { console.error(err); }
+}
+
+// Load System Users
+async function loadSystemUsers() {
+    try {
+        const res = await fetch('https://price-check-webhook.onrender.com/api/admin/system-users', {
+            headers: { 'x-admin-key': currentAdminKey }
+        });
+        const data = await res.json();
+        const tbody = document.getElementById('usersTableBody');
+        tbody.innerHTML = '';
+
+        if (data.success) {
+            data.users.forEach(user => {
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid #1e293b';
+                tr.innerHTML = `
+                    <td style="padding: 10px;">${user.fullname}</td>
+                    <td style="padding: 10px;">${user.email}</td>
+                    <td style="padding: 10px;">${user.role}</td>
+                    <td style="padding: 10px; color: ${user.active ? '#34d399' : '#f87171'};">${user.active ? 'Active' : 'Disabled'}</td>
+                    <td style="padding: 10px;">
+                        <button onclick="toggleUser('${user.id}', ${!user.active})" style="padding: 5px 10px; background: ${user.active ? '#ef4444' : '#10b981'}; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            ${user.active ? 'Disable' : 'Enable'}
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    } catch (err) { console.error(err); }
+}
+
+// Toggle System User Access
+async function toggleUser(userId, activeState) {
+    try {
+        const res = await fetch('https://price-check-webhook.onrender.com/api/admin/toggle-user-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminKey: currentAdminKey, userId, activeState })
+        });
+        const data = await res.json();
+        if (data.success) {
+            loadSystemUsers();
+        }
+    } catch (err) { console.error(err); }
+}
+
+// Create System User Handler
+document.getElementById('createSystemUserForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('createUserMsg');
+    const payload = {
+        adminKey: currentAdminKey,
+        fullname: document.getElementById('newAdminName').value,
+        email: document.getElementById('newAdminEmail').value,
+        password: document.getElementById('newAdminPassword').value,
+        role: document.getElementById('newAdminRole').value
+    };
+
+    try {
+        const res = await fetch('https://price-check-webhook.onrender.com/api/admin/register-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            msg.style.color = '#34d399';
+            msg.innerText = 'User created!';
+            document.getElementById('createSystemUserForm').reset();
+            loadSystemUsers();
+        } else {
+            msg.style.color = '#f87171';
+            msg.innerText = data.message;
+        }
+    } catch (err) { console.error(err); }
+});
+</script>
+
+    
 </body>
 </html>

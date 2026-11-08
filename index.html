@@ -501,7 +501,7 @@ document.getElementById('createShopForm').addEventListener('submit', async (e) =
 
         if (data.success) {
             msgEl.style.color = '#34d399';
-            msgEl.innerText = 'Shop registered successfully!';
+            msgEl.innerText = data.message; // Dynamically displays "Shop : [Name] registered successfully!"
             document.getElementById('createShopForm').reset();
             document.getElementById('initialPin').value = '1234';
         } else {

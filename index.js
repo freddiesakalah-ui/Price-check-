@@ -21,7 +21,7 @@ app.use(cors({
         'http://localhost:3000'
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+   allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key']
 }));
 
 //  app.use(express.json());

@@ -812,7 +812,7 @@ app.post('/api/admin/update-shop', async (req, res) => {
 
         // Update the record in Airtable
         const updatedRecord = await base('Shops').update(recordId, {
-            "Manager Fullname and Surname": managerName,
+            "Manager Fullname": managerName,
             "Authorized Email": authorizedEmail,
             "Contact Phone": contactPhone,
             "Landline Number": landlineNumber,
@@ -882,7 +882,7 @@ app.get('/api/admin/shops', async (req, res) => {
             id: record.id,
             shopId: record.get('Shop ID'),
             shopName: record.get('Shop Name'),
-            managerName: record.get('Manager Fullname and Surname') || '',
+            managerName: record.get('Manager Fullname') || '',
             email: record.get('Authorized Email'),
             status: record.get('Status') || 'Active',
             failedAttempts: record.get('Failed Attempts') || 0,

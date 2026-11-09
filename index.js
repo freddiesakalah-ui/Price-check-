@@ -864,6 +864,39 @@ app.post('/api/admin/register-user', async (req, res) => {
     }
 });
 
+// Update System User Endpoint (Protected by Master Admin Key)
+app.post('/api/admin/update-system-user', async (req, res) => {
+    try {
+        const { adminKey, userId, fullname, email, role, activeState } = req.body;
+
+        if (!adminKey || adminKey !== process.env.ADMIN_SECRET_KEY) {
+            return res.status(401).json({ success: false, message: 'Unauthorized master admin key.' });
+        }
+
+        if (!userId) {
+            return res.status(400).json({ success: false, message: 'User record ID is required.' });
+        }
+
+        // Update the record in Airtable SystemUsers table
+        const updatedRecord = await base('SystemUsers').update(userId, {
+            "Fullname": fullname,
+            "Email": email,
+            "Role": role,
+            "Active": activeState
+        });
+
+        return res.json({ 
+            success: true, 
+            message: `System user ${fullname || 'record'} updated successfully!`, 
+            userId: updatedRecord.id 
+        });
+
+    } catch (error) {
+        console.error('Update system user error:', error);
+        return res.status(500).json({ success: false, message: 'Internal server error updating user.' });
+    }
+});
+
 // ==========================================
 // SECURITY-DRIVEN ADMIN API ENDPOINTS
 // ==========================================

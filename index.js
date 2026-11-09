@@ -833,6 +833,37 @@ app.post('/api/admin/update-shop', async (req, res) => {
     }
 });
 
+app.post('/api/admin/register-user', async (req, res) => {
+    try {
+        const { adminKey, fullname, email, password, role ,createdDate} = req.body;
+
+        if (!adminKey || adminKey !== process.env.ADMIN_SECRET_KEY) {
+            return res.status(401).json({ success: false, message: 'Unauthorized master admin key.' });
+        }
+
+        const createdRecords = await base('SystemUsers').create([
+            {
+                fields: {
+                    "Fullname": fullname,
+                    "Email": email,
+                    "Password": password, // Note: In production, hash this with bcrypt!
+                    "Role": role || 'Support',
+                    "Active": true,
+                    "Created Date":createdDate
+                }
+            }
+        ]);
+
+        return res.json({ 
+            success: true, 
+            message: `System user ${fullname} created successfully!` 
+        });
+    } catch (error) {
+        console.error('Register user error:', error);
+        return res.status(500).json({ success: false, message: 'Internal server error creating user.' });
+    }
+});
+
 // ==========================================
 // SECURITY-DRIVEN ADMIN API ENDPOINTS
 // ==========================================

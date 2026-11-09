@@ -738,7 +738,7 @@ document.getElementById('updateShopForm').addEventListener('submit', async (e) =
 
 <script>
 let currentAdminKey = '';
-
+</script>
   <!-- System User Edit Panel -->
 <div id="editUserPanel" style="background: #1e293b; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: none;">
     <h4 style="color: #38bdf8; margin-bottom: 10px;">✏️ Edit System User Record</h4>
@@ -769,6 +769,22 @@ let currentAdminKey = '';
     </form>
 </div>
 
+ <!-- 2. JAVASCRIPT SECTION (Place all script functions below in a proper <script> tag) -->
+<script>
+let systemUsersCache = {};
+
+function editUserById(userId) {
+    const user = systemUsersCache[userId];
+    if (!user) return;
+
+    document.getElementById('editUserId').value = user.id;
+    document.getElementById('editUserFullname').value = user.fullname || '';
+    document.getElementById('editUserEmail').value = user.email || '';
+    document.getElementById('editUserRole').value = user.role || 'Support';
+    document.getElementById('editUserPanel').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>   
 // Authentication Gateway Handler
 document.getElementById('unifiedLoginForm').addEventListener('submit', async (e) => {
     e.preventDefault();

@@ -938,9 +938,10 @@ app.get('/api/admin/system-users', async (req, res) => {
         const records = await base('SystemUsers').select().all();
         const users = records.map(record => ({
             id: record.id,
-            email: record.get('Email'),
-            fullname: record.get('Fullname'),
-            role: record.get('Role'),
+            // Check multiple potential column names to prevent N/A values
+            email: record.get('Email') || record.get('Email Address') || record.get('email') || '',
+            fullname: record.get('Fullname') || record.get('Full Name') || record.get('Name') || '',
+            role: record.get('Role') || record.get('Access Role') || 'Support',
             active: record.get('Active') !== false
         }));
 

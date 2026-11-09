@@ -890,6 +890,59 @@ async function loadSystemUsers() {
     }
 }
 
+
+// Function triggered when an admin clicks "Edit" on a user row
+function populateEditUserForm(user) {
+    document.getElementById('editUserId').value = user.id;
+    document.getElementById('editUserFullname').value = user.fullname || '';
+    document.getElementById('editUserEmail').value = user.email || '';
+    document.getElementById('editUserRole').value = user.role || 'Support';
+    document.getElementById('editUserPanel').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Handle System User Update Submission
+const updateSystemUserForm = document.getElementById('updateSystemUserForm');
+if (updateSystemUserForm) {
+    updateSystemUserForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msgEl = document.getElementById('updateUserMsg');
+        msgEl.style.color = '#cbd5e1';
+        msgEl.innerText = 'Saving changes...';
+
+        const payload = {
+            adminKey: currentAdminKey,
+            userId: document.getElementById('editUserId').value,
+            fullname: document.getElementById('editUserFullname').value,
+            email: document.getElementById('editUserEmail').value,
+            role: document.getElementById('editUserRole').value,
+            activeState: true // Preserve active state or fetch from form if needed
+        };
+
+        try {
+            const res = await fetch('https://price-check-webhook.onrender.com/api/admin/update-system-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                msgEl.style.color = '#34d399';
+                msgEl.innerText = data.message;
+                loadSystemUsers(); // Refresh table view
+                setTimeout(() => { document.getElementById('editUserPanel').style.display = 'none'; }, 1500);
+            } else {
+                msgEl.style.color = '#f87171';
+                msgEl.innerText = data.message;
+            }
+        } catch (err) {
+            msgEl.style.color = '#f87171';
+            msgEl.innerText = 'Network error connecting to backend.';
+        }
+    });
+}
+  
 // 2. Corrected System User Creation Handler with Feedback
 document.getElementById('createSystemUserForm').addEventListener('submit', async (e) => {
     e.preventDefault();

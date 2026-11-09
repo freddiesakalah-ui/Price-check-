@@ -827,7 +827,7 @@ async function loadShopsOversight() {
     } catch (err) { console.error(err); }
 }
 
-// Load System Users
+// 1. Corrected System Users Loading Function
 async function loadSystemUsers() {
     try {
         const res = await fetch('https://price-check-webhook.onrender.com/api/admin/system-users', {
@@ -837,14 +837,14 @@ async function loadSystemUsers() {
         const tbody = document.getElementById('usersTableBody');
         tbody.innerHTML = '';
 
-        if (data.success) {
+        if (data.success && data.users) {
             data.users.forEach(user => {
                 const tr = document.createElement('tr');
                 tr.style.borderBottom = '1px solid #1e293b';
                 tr.innerHTML = `
-                    <td style="padding: 10px;">${user.fullname}</td>
-                    <td style="padding: 10px;">${user.email}</td>
-                    <td style="padding: 10px;">${user.role}</td>
+                    <td style="padding: 10px;">${user.fullname || 'N/A'}</td>
+                    <td style="padding: 10px;">${user.email || 'N/A'}</td>
+                    <td style="padding: 10px;">${user.role || 'Support'}</td>
                     <td style="padding: 10px; color: ${user.active ? '#34d399' : '#f87171'};">${user.active ? 'Active' : 'Disabled'}</td>
                     <td style="padding: 10px;">
                         <button onclick="toggleUser('${user.id}', ${!user.active})" style="padding: 5px 10px; background: ${user.active ? '#ef4444' : '#10b981'}; color: white; border: none; border-radius: 4px; cursor: pointer;">
@@ -855,8 +855,51 @@ async function loadSystemUsers() {
                 tbody.appendChild(tr);
             });
         }
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+        console.error('Error loading users:', err); 
+    }
 }
+
+// 2. Corrected System User Creation Handler with Feedback
+document.getElementById('createSystemUserForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('createUserMsg');
+    msg.style.color = '#cbd5e1';
+    msg.innerText = 'Creating user...';
+
+    const payload = {
+        adminKey: currentAdminKey,
+        fullname: document.getElementById('newAdminName').value,
+        email: document.getElementById('newAdminEmail').value,
+        password: document.getElementById('newAdminPassword').value,
+        role: document.getElementById('newAdminRole').value,
+        Created Date: document.getElementById('newAdminCreated Date ').value
+      
+    };
+
+    try {
+        const res = await fetch('https://price-check-webhook.onrender.com/api/admin/register-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            msg.style.color = '#34d399';
+            msg.innerText = data.message;
+            document.getElementById('createSystemUserForm').reset();
+            loadSystemUsers(); // Refresh table
+        } else {
+            msg.style.color = '#f87171';
+            msg.innerText = data.message || 'Failed to create user.';
+        }
+    } catch (err) {
+        console.error(err);
+        msg.style.color = '#f87171';
+        msg.innerText = 'Network error connecting to backend.';
+    }
+});
 
 // Toggle System User Access
 async function toggleUser(userId, activeState) {

@@ -783,6 +783,7 @@ function editUserById(userId) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>   
+ <script>
 // Authentication Gateway Handler
 document.getElementById('unifiedLoginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -810,7 +811,7 @@ document.getElementById('unifiedLoginForm').addEventListener('submit', async (e)
         msg.innerText = 'Connection error to backend.';
     }
 });
-
+ 
 // Tab Switcher
 function switchTab(tabName) {
     document.querySelectorAll('.dashboard-tab').forEach(el => el.style.display = 'none');

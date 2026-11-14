@@ -891,7 +891,7 @@ async function loadSystemUsers() {
         }
 
         tbody.innerHTML = '';
-        //systemUsersCache = {}; // Reset global cache
+        systemUsersCache = {}; // Reset global cache
 
         if (data.success && Array.isArray(data.users)) {
             data.users.forEach(user => {

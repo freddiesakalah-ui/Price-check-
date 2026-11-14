@@ -45,7 +45,19 @@ const AIRTABLE_TOKEN = process.env.AIRTABLE_ACCESS_TOKEN;
 const BASE_ID = process.env.AIRTABLE_BASE_ID; // Base ID: appwQZHTlwlpuDBUa
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
 
+// 1. Define the verifyAdminKey middleware
+const verifyAdminKey = (req, res, next) => {
+    const adminKey = req.headers['x-admin-key'];
+    
+    // Replace 'L3tm3innow' with your environment variable process.env.ADMIN_SECRET_KEY if configured
+    const masterKey = process.env.ADMIN_SECRET_KEY || process.env.ADMIN_SECRET_KEY; 
 
+    if (adminKey && adminKey === masterKey) {
+        next(); // Key matches! Proceed to the route handler.
+    } else {
+        res.status(401).json({ success: false, message: 'Unauthorized: Invalid or missing Master Admin Key' });
+    }
+};
 // =========================================================================
 // 3. YOUR EXISTING WORKING DIALOGFLOW CODE (FROM SCREENSHOT 1)
 // =========================================================================

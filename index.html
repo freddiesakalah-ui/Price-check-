@@ -780,10 +780,19 @@ function editUserById(userId) {
     document.getElementById('editUserEmail').value = user.email || '';
     document.getElementById('editUserRole').value = user.role || 'Support';
     document.getElementById('editUserPanel').style.display = 'block';
-    // Smoothly scroll directly to the panel instead of top: 0
+// Correctly reference the element by its ID
+    const editPanel = document.getElementById('editUserPanel');
+    if (editPanel) {
+        editPanel.style.display = 'block';
+    } 
+  // Smoothly scroll directly to the panel instead of top: 0
         editPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
-</script>   
+
+  
+</script>  
+  
+  
  <script>
 // Authentication Gateway Handler
 document.getElementById('unifiedLoginForm').addEventListener('submit', async (e) => {

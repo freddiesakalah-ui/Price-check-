@@ -24,7 +24,7 @@ app.use(cors({
    allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key']
 }));
 
-//  app.use(express.json());
+ app.use(express.json());
 
 // =========================================================================
 // 2. EXPRESS & MIDDLEWARE INITIALIZATION
@@ -1009,25 +1009,25 @@ app.get('/api/admin/system-users', async (req, res) => {
     }
 });
 
-// 4. Toggle System User Status (Enable/Disable Admin Access)
-app.post('/api/admin/toggle-user-status', async (req, res) => {
-    try {
-        const { adminKey, userId, activeState } = req.body;
-        if (!adminKey || adminKey !== process.env.ADMIN_SECRET_KEY) {
-            return res.status(401).json({ success: false, message: 'Unauthorized.' });
-        }
+// Ensure body parser is active near the top of your backend index.js:
+// app.use(express.json());
 
+app.patch('/api/admin/system-users/:id', verifyAdminKey, async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const { active } = req.body;
+
+        // Update the 'active' field in Airtable (matches your checkbox/boolean field)
         await base('SystemUsers').update(userId, {
-            "Active": activeState
+            active: Active 
         });
 
-        return res.json({ success: true, message: 'System user status updated.' });
-    } catch (error) {
-        console.error('Toggle user status error:', error);
-        return res.status(500).json({ success: false, message: 'Error updating user status.' });
+        res.json({ success: true, message: 'User status updated successfully' });
+    } catch (err) {
+        console.error('Airtable status update error:', err);
+        res.status(500).json({ success: false, error: err.message });
     }
 });
-
 // =========================================================================
 // 6. SERVER LISTEN
 // =========================================================================

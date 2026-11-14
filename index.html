@@ -1091,19 +1091,19 @@ document.getElementById('createSystemUserForm').addEventListener('submit', async
 });
 
 // Toggle System User Access
-async function toggleUser(userId, activeState) {
-    try {
-        const res = await fetch('https://price-check-webhook.onrender.com/api/admin/toggle-user-status', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ adminKey: currentAdminKey, userId, activeState })
-        });
-        const data = await res.json();
-        if (data.success) {
-            loadSystemUsers();
+//async function toggleUser(userId, activeState) {
+  //  try {
+      //  const res = await fetch('https://price-check-webhook.onrender.com/api/admin/toggle-user-status', {
+         //   method: 'POST',
+          //  headers: { 'Content-Type': 'application/json' },
+          //  body: JSON.stringify({ adminKey: currentAdminKey, userId, activeState })
+      //  });
+       // const data = await res.json();
+       // if (data.success) {
+          //  loadSystemUsers();
         }
-    } catch (err) { console.error(err); }
-}
+   // } catch (err) { console.error(err); }
+//}
 
 // Create System User Handler
 document.getElementById('createSystemUserForm').addEventListener('submit', async (e) => {

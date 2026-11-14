@@ -780,7 +780,8 @@ function editUserById(userId) {
     document.getElementById('editUserEmail').value = user.email || '';
     document.getElementById('editUserRole').value = user.role || 'Support';
     document.getElementById('editUserPanel').style.display = 'block';
-    //window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Smoothly scroll directly to the panel instead of top: 0
+        editPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 </script>   
  <script>

@@ -1017,7 +1017,34 @@ if (updateSystemUserForm) {
         }
     });
 }
-  
+
+async function toggleUser(userId, newActiveStatus) {
+    try {
+        console.log(`Toggling user ID ${userId} to active: ${newActiveStatus}`);
+        const res = await fetch(`https://price-check-webhook.onrender.com/api/admin/system-users/${userId}`, {
+            method: 'PATCH',
+            headers: { 
+                'Content-Type': 'application/json',
+                'x-admin-key': currentAdminKey 
+            },
+            body: JSON.stringify({ active: newActiveStatus })
+        });
+
+        const data = await res.json();
+        console.log("Toggle response:", data);
+
+        if (data.success) {
+            // Refresh the table to show the updated badge and button text
+            loadSystemUsers();
+        } else {
+            alert("Failed to update user status: " + (data.message || 'Unknown error'));
+        }
+    } catch (err) {
+        console.error("Error toggling user status:", err);
+        alert("An error occurred while updating the user status.");
+    }
+}
+   
 // 2. Corrected System User Creation Handler with Feedback
 document.getElementById('createSystemUserForm').addEventListener('submit', async (e) => {
     e.preventDefault();

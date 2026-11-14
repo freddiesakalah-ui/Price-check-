@@ -952,6 +952,9 @@ async function loadSystemUsers() {
                         </button>
                         <!-- ADD THE DELETE BUTTON RIGHT HERE -->
                    <button onclick="deleteUser('${userId}')" style="padding: 5px 10px; background: #7f1d1d; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Delete</button>
+                   <button onclick="toggleUser('${userId}', ${!user.active})" style="padding: 5px 10px; background: ${user.active ? '#ef4444' : '#10b981'}; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                   ${user.active ? 'Disable' : 'Enable'}
+                    </button>
                     </td>
                 `;
                 tbody.appendChild(tr);

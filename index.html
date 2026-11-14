@@ -1018,9 +1018,11 @@ if (updateSystemUserForm) {
     });
 }
 
+// Place this inside your <script> block in index.html
 async function toggleUser(userId, newActiveStatus) {
     try {
         console.log(`Toggling user ID ${userId} to active: ${newActiveStatus}`);
+        
         const res = await fetch(`https://price-check-webhook.onrender.com/api/admin/system-users/${userId}`, {
             method: 'PATCH',
             headers: { 
@@ -1034,8 +1036,7 @@ async function toggleUser(userId, newActiveStatus) {
         console.log("Toggle response:", data);
 
         if (data.success) {
-            // Refresh the table to show the updated badge and button text
-            loadSystemUsers();
+            loadSystemUsers(); // Refresh the table
         } else {
             alert("Failed to update user status: " + (data.message || 'Unknown error'));
         }

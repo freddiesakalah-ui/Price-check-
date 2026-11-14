@@ -864,6 +864,18 @@ app.post('/api/admin/register-user', async (req, res) => {
     }
 });
 
+// >>> ADD YOUR NEW DELETE ROUTE RIGHT HERE <<<
+app.delete('/api/admin/system-users/:id', verifyAdminKey, async (req, res) => {
+    try {
+        const userId = req.params.id;
+        await base('SystemUsers').destroy(userId);
+        res.json({ success: true, message: 'User deleted successfully' });
+    } catch (err) {
+        console.error('Airtable delete error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // Update System User Endpoint (Protected by Master Admin Key)
 app.post('/api/admin/update-system-user', async (req, res) => {
     try {

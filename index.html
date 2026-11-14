@@ -789,6 +789,33 @@ function editUserById(userId) {
         editPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
+async function deleteUser(userId) {
+    if (!confirm("Are you sure you want to permanently delete this system user? This action cannot be undone.")) {
+        return;
+    }
+
+    try {
+        console.log("Deleting user ID:", userId);
+        const res = await fetch(`https://price-check-webhook.onrender.com/api/admin/system-users/${userId}`, {
+            method: 'DELETE',
+            headers: { 'x-admin-key': currentAdminKey }
+        });
+        
+        const data = await res.json();
+        console.log("Delete response:", data);
+
+        if (data.success) {
+            // Refresh the user table to remove the deleted row
+            loadSystemUsers();
+        } else {
+            alert("Failed to delete user: " + (data.message || 'Unknown error'));
+        }
+    } catch (err) {
+        console.error("Error deleting system user:", err);
+        alert("An error occurred while deleting the user.");
+    }
+}
+
   
 </script>  
   

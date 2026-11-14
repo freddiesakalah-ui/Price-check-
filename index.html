@@ -873,36 +873,56 @@ async function loadShopsOversight() {
 }
 
 // 1. Corrected System Users Loading Function
+let systemUsersCache = {}; // Ensure global cache exists at top of script
+
 async function loadSystemUsers() {
     try {
+        console.log("Fetching system users with key:", currentAdminKey);
         const res = await fetch('https://price-check-webhook.onrender.com/api/admin/system-users', {
             headers: { 'x-admin-key': currentAdminKey }
         });
         const data = await res.json();
-        const tbody = document.getElementById('usersTableBody');
-        tbody.innerHTML = '';
+        console.log("loadSystemUsers API data received:", data);
 
-        if (data.success && data.users) {
+        const tbody = document.getElementById('usersTableBody');
+        if (!tbody) {
+            console.error("Error: 'usersTableBody' element not found in DOM!");
+            return;
+        }
+
+        tbody.innerHTML = '';
+        systemUsersCache = {}; // Reset global cache
+
+        if (data.success && Array.isArray(data.users)) {
             data.users.forEach(user => {
+                // Ensure we use the correct ID field (fallback to id or record id)
+                const userId = user.id || user._id;
+                if (userId) {
+                    systemUsersCache[userId] = user;
+                }
+
                 const tr = document.createElement('tr');
                 tr.style.borderBottom = '1px solid #1e293b';
-              tr.innerHTML = `
+                tr.innerHTML = `
                     <td style="padding: 10px;">${user.fullname || 'N/A'}</td>
                     <td style="padding: 10px;">${user.email || 'N/A'}</td>
                     <td style="padding: 10px;">${user.role || 'Support'}</td>
                     <td style="padding: 10px; color: ${user.active ? '#34d399' : '#f87171'};">${user.active ? 'Active' : 'Disabled'}</td>
                     <td style="padding: 10px; display: flex; gap: 8px;">
-                        <button onclick="editUserById('${user.id}')" style="padding: 5px 10px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Edit</button>
-                        <button onclick="toggleUser('${user.id}', ${!user.active})" style="padding: 5px 10px; background: ${user.active ? '#ef4444' : '#10b981'}; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                        <button onclick="editUserById('${userId}')" style="padding: 5px 10px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Edit</button>
+                        <button onclick="toggleUser('${userId}', ${!user.active})" style="padding: 5px 10px; background: ${user.active ? '#ef4444' : '#10b981'}; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
                             ${user.active ? 'Disable' : 'Enable'}
                         </button>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
+            console.log("System users cache populated successfully:", systemUsersCache);
+        } else {
+            console.warn("Data success was false or users array missing:", data);
         }
     } catch (err) { 
-        console.error('Error loading users:', err); 
+        console.error('Error loading system users:', err); 
     }
 }
 

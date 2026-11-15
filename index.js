@@ -985,30 +985,23 @@ app.get('/api/admin/shops', async (req, res) => {
 });
 
 // 3. Fetch All System Users (For Access Control)
-app.get('/api/admin/system-users', async (req, res) => {
+app.get('/api/admin/system-users', verifyAdminKey, async (req, res) => {
     try {
-        const adminKey = req.headers['x-admin-key'];
-        if (!adminKey || adminKey !== process.env.ADMIN_SECRET_KEY) {
-            return res.status(401).json({ success: false, message: 'Unauthorized.' });
-        }
-
         const records = await base('SystemUsers').select().all();
         const users = records.map(record => ({
             id: record.id,
-            // Check multiple potential column names to prevent N/A values
-            email: record.get('Email') || record.get('Email Address') || record.get('email') || '',
-            fullname: record.get('Fullname') || record.get('Full Name') || record.get('Name') || '',
-            role: record.get('Role') || record.get('Access Role') || 'Support',
-            active: record.get('Active') !== false
+            fullname: record.fields.FullName || record.fields.Fullname || '',
+            email: record.fields.Email || '',
+            role: record.fields.Role || 'Support',
+            // Ensure this matches your exact Airtable field name ("Active" or "active")
+            active: record.fields.Active !== undefined ? record.fields.Active : true
         }));
-
-        return res.json({ success: true, users });
-    } catch (error) {
-        console.error('Fetch system users error:', error);
-        return res.status(500).json({ success: false, message: 'Error fetching system users.' });
+        res.json({ success: true, users });
+    } catch (err) {
+        console.error('Error fetching users:', err);
+        res.status(500).json({ success: false, error: err.message });
     }
 });
-
 // Ensure body parser is active near the top of your backend index.js:
 // app.use(express.json());
 

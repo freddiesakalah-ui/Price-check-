@@ -984,7 +984,7 @@ app.get('/api/admin/shops', async (req, res) => {
     }
 });
 
-// 3. Fetch All System Users (For Access Control)
+// 1. Fetch All System Users (GET)
 app.get('/api/admin/system-users', verifyAdminKey, async (req, res) => {
     try {
         const records = await base('SystemUsers').select().all();
@@ -993,9 +993,8 @@ app.get('/api/admin/system-users', verifyAdminKey, async (req, res) => {
             fullname: record.fields.FullName || record.fields.Fullname || '',
             email: record.fields.Email || '',
             role: record.fields.Role || 'Support',
-            // Check both 'Active' and 'active' to ensure proper mapping
-            active: record.fields.Active !== undefined ? record.fields.Active : 
-                    (record.fields.active !== undefined ? record.fields.active : true)
+            // Checkbox fields in Airtable return true when checked, and undefined when unchecked
+            active: record.fields.Active === true
         }));
         res.json({ success: true, users });
     } catch (err) {
@@ -1006,14 +1005,14 @@ app.get('/api/admin/system-users', verifyAdminKey, async (req, res) => {
 // Ensure body parser is active near the top of your backend index.js:
 // app.use(express.json());
 
+// 2. Update User Status / Toggle (PATCH)
 app.patch('/api/admin/system-users/:id', verifyAdminKey, async (req, res) => {
     try {
         const userId = req.params.id;
-        const { active } = req.body;
+        const { active } = req.body; // Expects boolean true/false
 
-        // Update the 'active' field in Airtable (matches your checkbox/boolean field)
         await base('SystemUsers').update(userId, {
-             "Active": active 
+            "Active": Boolean(active) 
         });
 
         res.json({ success: true, message: 'User status updated successfully' });

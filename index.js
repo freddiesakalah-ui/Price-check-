@@ -1019,7 +1019,7 @@ app.patch('/api/admin/system-users/:id', verifyAdminKey, async (req, res) => {
 
         // Update the 'active' field in Airtable (matches your checkbox/boolean field)
         await base('SystemUsers').update(userId, {
-            active: Active 
+            "Active": Active 
         });
 
         res.json({ success: true, message: 'User status updated successfully' });

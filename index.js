@@ -993,8 +993,9 @@ app.get('/api/admin/system-users', verifyAdminKey, async (req, res) => {
             fullname: record.fields.FullName || record.fields.Fullname || '',
             email: record.fields.Email || '',
             role: record.fields.Role || 'Support',
-            // Ensure this matches your exact Airtable field name ("Active" or "active")
-            active: record.fields.Active !== undefined ? record.fields.Active : true
+            // Check both 'Active' and 'active' to ensure proper mapping
+            active: record.fields.Active !== undefined ? record.fields.Active : 
+                    (record.fields.active !== undefined ? record.fields.active : true)
         }));
         res.json({ success: true, users });
     } catch (err) {

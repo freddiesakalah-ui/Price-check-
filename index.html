@@ -849,16 +849,25 @@ document.getElementById('unifiedLoginForm').addEventListener('submit', async (e)
     }
 });
  
-// Tab Switcher
 function switchTab(tabName) {
-    document.querySelectorAll('.dashboard-tab').forEach(el => el.style.display = 'none');
-    document.getElementById('tab-' + tabName).style.display = 'block';
-    
-    if (tabName === 'analytics') loadAnalytics();
-    if (tabName === 'shops') loadShopsOversight();
-    if (tabName === 'users') loadSystemUsers();
-}
+    // Hide all tab contents safely
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabContents.forEach(content => {
+        if (content.style) {
+            content.style.display = 'none';
+        }
+    });
 
+    // Get the target tab content element
+    const targetElement = document.getElementById(tabName);
+    
+    // Null check to prevent the TypeError crash
+    if (targetElement && targetElement.style) {
+        targetElement.style.display = 'block';
+    } else {
+        console.error(`Tab content element with ID "${tabName}" not found or missing style property.`);
+    }
+}
 // Load Analytics Metrics
 async function loadAnalytics() {
     try {

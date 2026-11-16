@@ -895,7 +895,7 @@ async function loadShopsOversight() {
         'x-admin-key': localStorage.getItem('adminKey') || currentAdminKey 
     }
 });
-        const data = await response.json();
+        const data = await res.json();
         
         if (data.success) {
             const tbody = document.getElementById('shopsTableBody');

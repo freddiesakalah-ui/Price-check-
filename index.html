@@ -906,6 +906,7 @@ async function loadShopsOversight() {
                 tr.innerHTML = `
                     <td style="padding: 10px;">${shop.shopName || ''}</td>
                     <td style="padding: 10px;">${shop.managerName || ''}</td>
+                    <td style="padding: 10px;">${shop.managerName || 'No Manager Assigned'}</td>
                     <td style="padding: 10px;">${shop.status || 'Active'}</td>
                     <td style="padding: 10px;">${shop.failedAttempts || 0}</td>
                     <td style="padding: 10px;"><button class="btn-unlock" onclick="unlockShop('${shop.id}')">Unlock</button></td>

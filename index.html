@@ -864,6 +864,10 @@ function switchTab(tabName) {
     // Null check to prevent the TypeError crash
     if (targetElement && targetElement.style) {
         targetElement.style.display = 'block';
+      // --> ADD THIS LINE HERE <--
+    if (tabName === 'shops') {
+        loadShopsOversight();
+    }
     } else {
         console.error(`Tab content element with ID "${tabName}" not found or missing style property.`);
     }

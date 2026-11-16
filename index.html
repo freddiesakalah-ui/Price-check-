@@ -904,7 +904,7 @@ async function loadShopsOversight() {
             data.shops.forEach(shop => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td style="padding: 10px;">${shop.name || ''}</td>
+                    <td style="padding: 10px;">${shop.shopName || ''}</td>
                     <td style="padding: 10px;">${shop.manager || ''}</td>
                     <td style="padding: 10px;">${shop.status || 'Active'}</td>
                     <td style="padding: 10px;">${shop.failedAttempts || 0}</td>

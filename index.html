@@ -890,9 +890,11 @@ async function loadAnalytics() {
 
 async function loadShopsOversight() {
    try {
-        const response = await fetch('https://price-check-webhook.onrender.com/api/admin/shops', {
-            'x-admin-key': localStorage.getItem('adminKey') || currentAdminKey
-        });
+        const res = await fetch('https://price-check-webhook.onrender.com/api/admin/shops', {
+    headers: { 
+        'x-admin-key': localStorage.getItem('adminKey') || currentAdminKey 
+    }
+});
         const data = await response.json();
         
         if (data.success) {

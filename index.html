@@ -930,6 +930,29 @@ async function loadShopsOversight() {
     }
 }
 
+ async function unlockShop(shopId) {
+    try {
+        const adminKey = currentAdminKey || localStorage.getItem('adminKey');
+        const res = await fetch(`https://price-check-webhook.onrender.com/api/admin/shops/${shopId}/unlock`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-admin-key': adminKey
+            }
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert(data.message || 'Shop unlocked successfully.');
+            loadShopsOversight();
+        } else {
+            alert('Failed to unlock shop: ' + (data.message || 'Unknown error'));
+        }
+    } catch (err) {
+        console.error('Error unlocking shop:', err);
+        alert('Network error while unlocking shop.');
+    }
+} 
+   
 // 1. Corrected System Users Loading Function
 //let systemUsersCache = {}; // Ensure global cache exists at top of script
 

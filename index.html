@@ -877,17 +877,17 @@ document.getElementById('unifiedLoginForm').addEventListener('submit', async (e)
 }
 
     // Get the target tab content element
-    const targetElement = document.getElementById(shops);
+    const targetElement = document.getElementById(tabId);
     
     // Null check to prevent the TypeError crash
     if (targetElement && targetElement.style) {
         targetElement.style.display = 'block';
       // --> ADD THIS LINE HERE <--
-    if (tabName === 'shops') {
+    if (tabId === 'shops') {
         loadShopsOversight();
     }
     } else {
-        console.error(`Tab content element with ID "${shops}" not found or missing style property.`);
+        console.error(`Tab content element with ID "${tabId}" not found or missing style property.`);
     }
 //}
 // Load Analytics Metrics

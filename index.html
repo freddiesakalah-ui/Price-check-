@@ -877,22 +877,7 @@ document.getElementById('unifiedLoginForm').addEventListener('submit', async (e)
     if (btnElement) {
         btnElement.classList.add('active');
     }
-}
-
-    // Get the target tab content element:::Removed 241126
-   // const targetElement = document.getElementById(tabId);
-    
-    // Null check to prevent the TypeError crash
-   // if (targetElement && targetElement.style) {
-   //     targetElement.style.display = 'block';
-      // --> ADD THIS LINE HERE <--
-   // if (tabId === 'shops') {
-  //      loadShopsOversight();
-   // }
-   // } else {
-    //    console.error(`Tab content element with ID "${tabId}" not found or missing style property.`);
-  //  }
-//}
+} 
 // Load Analytics Metrics
 async function loadAnalytics() {
     try {

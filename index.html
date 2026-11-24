@@ -869,6 +869,10 @@ document.getElementById('unifiedLoginForm').addEventListener('submit', async (e)
         if (tabId === 'shops' || tabId === 'tab-shops') {
             loadShopsOversight();
         }
+if (tabId === 'systemUsersSection' || tabId === 'users' || tabId === 'tab-system-users') {
+        loadSystemUsers();
+    }
+      
     } else {
         console.error('Target tab section not found:', tabId);
     }

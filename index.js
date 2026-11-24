@@ -984,6 +984,41 @@ app.get('/api/admin/shops', async (req, res) => {
     }
 });
 
+// Unlock a locked shop and reset failed PIN attempts
+app.post('/api/admin/shops/:id/unlock', async (req, res) => {
+    try {
+        const adminKey = req.headers['x-admin-key'] || req.body?.adminKey;
+
+        // 1. Validate Admin Key (adjust if you use a shared admin auth middleware)
+        if (!adminKey || adminKey !== process.env.ADMIN_SECRET_KEY) {
+            return res.status(401).json({ success: false, message: 'Unauthorized: Invalid admin key.' });
+        }
+
+        const shopId = req.params.id;
+        if (!shopId) {
+            return res.status(400).json({ success: false, message: 'Shop ID is required.' });
+        }
+
+        // 2. Update the Shop record in Airtable
+        // Note: Verify your exact Airtable column names ('Status' and 'Failed Attempts')
+        await base('Shops').update(shopId, {
+            'Status': 'Active',
+            'Failed Attempts': 0
+        });
+
+        return res.json({
+            success: true,
+            message: 'Shop unlocked and failed attempts reset to 0.'
+        });
+    } catch (error) {
+        console.error('Error unlocking shop in Airtable:', error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to unlock shop.'
+        });
+    }
+});
+
 // 1. Fetch All System Users (GET)
 app.get('/api/admin/system-users', verifyAdminKey, async (req, res) => {
     try {

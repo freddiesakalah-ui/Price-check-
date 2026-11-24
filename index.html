@@ -276,14 +276,14 @@
     </div>
 
   <script>
-    // Tab Switcher Logic
-    function switchTab(tabId, btnElement) {
-      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    //  ;;;;;i deactivated it for a while ::::::: 241126 Tab Switcher Logic
+  //  function switchTab(tabId, btnElement) {
+   //   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    //  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
       
-      document.getElementById(tabId).classList.add('active');
-      btnElement.classList.add('active');
-    }
+    //  document.getElementById(tabId).classList.add('active');
+    //  btnElement.classList.add('active');
+   // }
 
     // Bulk Price Submission Logic
     const submitBtn = document.getElementById('submitBtn');
@@ -849,14 +849,14 @@ document.getElementById('unifiedLoginForm').addEventListener('submit', async (e)
     }
 });
  
-function switchTab(tabName) {
+// deactivated temporarily 241126::::::::function switchTab(tabName) {:::::::::::
     // Hide all tab contents safely
-    const tabContents = document.querySelectorAll('.tab-content');
-    tabContents.forEach(content => {
-        if (content.style) {
-            content.style.display = 'none';
-        }
-    });
+  //  const tabContents = document.querySelectorAll('.tab-content');
+  //  tabContents.forEach(content => {
+   //     if (content.style) {
+     //       content.style.display = 'none';
+     //   }
+   // });
 
     // Get the target tab content element
     const targetElement = document.getElementById(tabName);

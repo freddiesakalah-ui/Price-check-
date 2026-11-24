@@ -645,11 +645,13 @@ document.getElementById('updateShopForm').addEventListener('submit', async (e) =
     <div id="adminDashboardContent" style="display: none;">
         
         <!-- Navigation Tabs -->
-        <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #334155; padding-bottom: 10px;">
-            <button onclick="switchTab('analytics')" class="tab-btn" style="padding: 8px 15px; background: #3b82f6; color: white; border: none; border-radius: 5px; cursor: pointer;">Analytics & Overview</button>
-            <button onclick="switchTab('shops')" class="tab-btn" style="padding: 8px 15px; background: #1e293b; color: white; border: none; border-radius: 5px; cursor: pointer;">Shop Oversight & Unlock</button>
-            <button onclick="switchTab('users')" class="tab-btn" style="padding: 8px 15px; background: #1e293b; color: white; border: none; border-radius: 5px; cursor: pointer;">System Users & Access</button>
-        </div>
+      <!--old div --> <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #334155; padding-bottom: 10px;">
+          <div class="nav-tabs" style="display: flex; gap: 10px; margin-bottom: 20px;">
+           <button class="tab-btn active" onclick="switchTab('analyticsSection', this)">Analytics & Overview</button>
+           <button class="tab-btn" onclick="switchTab('shopsSection', this)">Shop Oversight & Unlock</button>
+           <button class="tab-btn" onclick="switchTab('systemUsersSection', this)">System Users & Access</button>
+          </div> 
+     <!-- old div -->  </div>
 
         <!-- TAB 1: ANALYTICS & REPORTING HUB -->
         <div id="tab-analytics" class="dashboard-tab">

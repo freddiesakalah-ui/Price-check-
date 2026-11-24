@@ -988,8 +988,6 @@ app.get('/api/admin/shops', async (req, res) => {
 app.post('/api/admin/shops/:id/unlock', async (req, res) => {
     try {
         const adminKey = req.headers['x-admin-key'] || req.body?.adminKey;
-
-        // 1. Validate Admin Key (adjust if you use a shared admin auth middleware)
         if (!adminKey || adminKey !== process.env.ADMIN_SECRET_KEY) {
             return res.status(401).json({ success: false, message: 'Unauthorized: Invalid admin key.' });
         }
@@ -999,8 +997,20 @@ app.post('/api/admin/shops/:id/unlock', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Shop ID is required.' });
         }
 
-        // 2. Update the Shop record in Airtable
-        // Note: Verify your exact Airtable column names ('Status' and 'Failed Attempts')
+        // 1. Fetch current shop record first
+        const record = await base('Shops').find(shopId);
+        const currentStatus = record.get('Status') || 'Active';
+        const failedAttempts = Number(record.get('Failed Attempts') || 0);
+
+        // 2. Reject if the shop is not locked and has 0 failed attempts
+        if (currentStatus !== 'Locked' && failedAttempts === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'This shop is already active and not locked out.'
+            });
+        }
+
+        // 3. Otherwise, unlock and reset failed attempts
         await base('Shops').update(shopId, {
             'Status': 'Active',
             'Failed Attempts': 0
@@ -1018,7 +1028,6 @@ app.post('/api/admin/shops/:id/unlock', async (req, res) => {
         });
     }
 });
-
 // 1. Fetch All System Users (GET)
 app.get('/api/admin/system-users', verifyAdminKey, async (req, res) => {
     try {

@@ -848,7 +848,32 @@ document.getElementById('unifiedLoginForm').addEventListener('submit', async (e)
         msg.innerText = 'Connection error to backend.';
     }
 });
- 
+
+//added ::::241126/////
+   function switchTab(tabId, btnElement) {
+    // 1. Hide all tab content sections safely
+    document.querySelectorAll('.tab-content, .dashboard-section').forEach(el => {
+        el.style.display = 'none';
+    });
+
+    // 2. Remove 'active' class from all tab buttons
+    document.querySelectorAll('.tab-btn').forEach(el => {
+        el.classList.remove('active');
+    });
+
+    // 3. Show the target tab content
+    const targetElement = document.getElementById(tabId);
+    if (targetElement) {
+        targetElement.style.display = 'block';
+    } else {
+        console.error('Target tab section not found:', tabId);
+    }
+
+    // 4. Highlight the clicked button if passed
+    if (btnElement) {
+        btnElement.classList.add('active');
+    }
+}
 // deactivated temporarily 241126::::::::function switchTab(tabName) {:::::::::::
     // Hide all tab contents safely
   //  const tabContents = document.querySelectorAll('.tab-content');

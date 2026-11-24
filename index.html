@@ -866,7 +866,10 @@ document.getElementById('unifiedLoginForm').addEventListener('submit', async (e)
     const targetElement = document.getElementById(tabId);
     if (targetElement) {
         targetElement.style.display = 'block';
-    } else {
+    if (tabId === 'shops' || tabId === 'tab-shops') {
+    loadShopsOversight();
+    }
+    else {
         console.error('Target tab section not found:', tabId);
     }
 
@@ -876,19 +879,19 @@ document.getElementById('unifiedLoginForm').addEventListener('submit', async (e)
     }
 }
 
-    // Get the target tab content element
-    const targetElement = document.getElementById(tabId);
+    // Get the target tab content element:::Removed 241126
+   // const targetElement = document.getElementById(tabId);
     
     // Null check to prevent the TypeError crash
-    if (targetElement && targetElement.style) {
-        targetElement.style.display = 'block';
+   // if (targetElement && targetElement.style) {
+   //     targetElement.style.display = 'block';
       // --> ADD THIS LINE HERE <--
-    if (tabId === 'shops') {
-        loadShopsOversight();
-    }
-    } else {
-        console.error(`Tab content element with ID "${tabId}" not found or missing style property.`);
-    }
+   // if (tabId === 'shops') {
+  //      loadShopsOversight();
+   // }
+   // } else {
+    //    console.error(`Tab content element with ID "${tabId}" not found or missing style property.`);
+  //  }
 //}
 // Load Analytics Metrics
 async function loadAnalytics() {

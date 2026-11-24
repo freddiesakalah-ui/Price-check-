@@ -911,7 +911,8 @@ async function loadShopsOversight() {
             const tbody = document.getElementById('shopsTableBody');
             tbody.innerHTML = ''; // Clear existing rows
             
-            data.shops.forEach(shop => {
+            data.shops.forEach(shop => { 
+            const isLocked = (shop.status && shop.status.toLowerCase() === 'locked') || Number(shop.failedAttempts || 0) > 0;
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td style="padding: 10px;">${shop.shopName || ''}</td>
@@ -919,8 +920,11 @@ async function loadShopsOversight() {
                     <td style="padding: 10px;">${shop.status || 'Active'}</td>
                     <td style="padding: 10px;">${shop.failedAttempts || 0}</td>
                     <td style="padding: 10px; display: flex; gap: 8px;">
-                    <button class="btn-edit" onclick='populateEditForm(${JSON.stringify(shop)})' style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Edit</button></td>
-                    <td style="padding: 10px;"><button class="btn-unlock" onclick="unlockShop('${shop.id}')">Unlock</button></td>
+                    <button class="btn-edit" onclick='populateEditForm(${JSON.stringify(shop)})' style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Edit</button>
+                    <button class="btn-unlock" onclick="unlockShop('${shop.id}')" ${isLocked ? '' : 'disabled'} style="background: ${isLocked ? '#f59e0b' : '#475569'}; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: ${isLocked ? 'pointer' : 'not-allowed'}; opacity: ${isLocked ? '1' : '0.6'};">
+                    ${isLocked ? 'Unlock' : 'Active'}
+                     </button>
+                     </td>
                 `;
                 tbody.appendChild(tr);
             });

@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PriceCheck — Shop Manager Portal</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0b1120;
+      color: #f8fafc;
+    }
+    .container {
+      max-width: 960px;
+      margin: 28px auto;
+      padding: 24px;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+    }
+    h1, h2 { margin-top: 0; }
+    .row-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      color: #cbd5e1;
+      margin-bottom: 4px;
+    }
+    input, select, button {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: #f8fafc;
+      font-size: 14px;
+    }
+    button {
+      cursor: pointer;
+      font-weight: bold;
+      border: none;
+    }
+    .btn-primary { background: #10b981; color: #06281e; }
+    .btn-secondary { background: #3b82f6; color: #ffffff; }
+    .btn-muted { background: #334155; color: #e2e8f0; }
+    .tabs { display: flex; gap: 10px; margin-bottom: 18px; }
+    .tabs button { width: auto; padding: 9px 18px; }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #1e293b;
+    }
+    .badge {
+      background: #1e293b;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      color: #34d399;
+    }
+    .msg { margin-top: 10px; font-size: 14px; }
+    .ok { color: #34d399; }
+    .err { color: #f87171; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+    th, td { border-bottom: 1px solid #334155; padding: 8px; text-align: left; }
+    th { background: #1e293b; }
+    .row-err { color: #f87171; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- LOGIN VIEW -->
+    <div id="loginSection">
+      <h1>Shop Manager Sign In</h1>
+      <p style="color:#94a3b8;">Sign in with your assigned shop and PIN to capture and update prices.</p>
+      <form id="shopLoginForm">
+        <div class="row-grid">
+          <div>
+            <label for="loginShopSelect">Shop</label>
+            <select id="loginShopSelect" required>
+              <option value="">Loading shops...</option>
+            </select>
+          </div>
+          <div>
+            <label for="loginPin">Shop PIN</label>
+            <input type="password" id="loginPin" placeholder="Enter PIN" required />
+          </div>
+        </div>
+        <button type="submit" id="loginBtn" class="btn-primary" style="max-width: 220px;">Unlock Shop Portal</button>
+      </form>
+      <p id="loginMsg" class="msg"></p>
+    </div>
+
+    <!-- PORTAL VIEW -->
+    <div id="portalSection" style="display:none;">
+      <div class="topbar">
+        <div>
+          <h2 id="activeShopHeading" style="margin-bottom:4px;">Shop Price Capture</h2>
+          <span class="badge" id="activeShopBadge">Authenticated</span>
+        </div>
+        <button type="button" class="btn-muted" onclick="logoutShop()" style="width:auto; padding:8px 14px;">Sign Out</button>
+      </div>
+
+      <div class="tabs">
+        <button type="button" id="tabSingleBtn" class="btn-primary" onclick="switchMode('single')">Single Item Capture</button>
+        <button type="button" id="tabBulkBtn" class="btn-secondary" onclick="switchMode('bulk')">CSV Bulk Upload</button>
+      </div>
+
+      <!-- OPTION 1: SINGLE ITEM CAPTURE -->
+      <div id="singleModePanel">
+        <div style="margin-bottom:12px;">
+          <label for="productSearchInput">Search Existing Catalog Product (Autocomplete)</label>
+          <input type="text" id="productSearchInput" list="productDatalist" oninput="onProductSearchInput()" placeholder="Type product name to select existing item..." />
+          <datalist id="productDatalist"></datalist>
+        </div>
+
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:14px; cursor:pointer;">
+          <input type="checkbox" id="newItemCheckbox" onchange="handleNewItemToggle()" style="width:auto;" />
+          <span>Create a <strong>New Grocery Item</strong> (if not in catalog)</span>
+        </label>
+
+        <form id="singlePriceForm">
+          <input type="hidden" id="selectedProductId" />
+
+          <div class="row-grid">
+            <div>
+              <label for="productName">Product Name *</label>
+              <input type="text" id="productName" placeholder="e.g. White Sugar" required />
+            </div>
+            <div>
+              <label for="category">Category</label>
+              <input type="text" id="category" placeholder="e.g. Pantry & Baking" />
+            </div>
+            <div>
+              <label for="brand">Brand</label>
+              <input type="text" id="brand" placeholder="e.g. Gold Star" />
+            </div>
+            <div>
+              <label for="size">Size</label>
+              <input type="text" id="size" placeholder="e.g. 2" />
+            </div>
+            <div>
+              <label for="unit">Unit *</label>
+              <input type="text" id="unit" placeholder="e.g. kg, g, L, ml, pack" required />
+            </div>
+            <div>
+              <label for="flavour">Flavour</label>
+              <input type="text" id="flavour" placeholder="e.g. Original or leave blank" />
+            </div>
+          </div>
+
+          <div class="row-grid">
+            <div>
+              <label for="locationSelect">Location (Branch)</label>
+              <select id="locationSelect" onchange="onLocationChange()">
+                <option value="">-- Select Location --</option>
+              </select>
+            </div>
+            <div>
+              <label for="city">City *</label>
+              <input type="text" id="city" placeholder="e.g. Harare" required />
+            </div>
+            <div>
+              <label for="subLocation">Sub-location</label>
+              <input type="text" id="subLocation" placeholder="e.g. CBD" />
+            </div>
+            <div>
+              <label for="priceUsd">Price (USD) *</label>
+              <input type="number" step="0.01" min="0.01" id="priceUsd" placeholder="e.g. 3.49" required />
+            </div>
+            <div>
+              <label for="availability">Availability</label>
+              <select id="availability">
+                <option value="In Stock">In Stock</option>
+                <option value="Low Stock">Low Stock</option>
+                <option value="Out of Stock">Out of Stock</option>
+              </select>
+            </div>
+          </div>
+
+          <button type="submit" id="savePriceBtn" class="btn-primary">Save Shop Price</button>
+        </form>
+        <p id="singleMsg" class="msg"></p>
+      </div>
+
+      <!-- OPTION 3: CSV BULK UPLOAD -->
+      <div id="bulkModePanel" style="display:none;">
+        <p style="color:#94a3b8; font-size:14px;">
+          CSV columns: <code>productName,category,brand,size,flavour,unit,locationId,city,subLocation,priceUsd,availability</code>
+        </p>
+        <div style="margin-bottom:10px;">
+          <button type="button" class="btn-muted" onclick="downloadSampleCsv()" style="width:auto; padding:8px 14px;">Download Sample CSV</button>
+        </div>
+        <input type="file" id="csvInput" accept=".csv" onchange="handleCsvFile(event)" />
+        <div id="csvPreviewBox"></div>
+        <button type="button" id="uploadBulkBtn" class="btn-secondary" onclick="uploadValidCsvRows()" disabled style="margin-top:14px; max-width:260px; opacity:0.5;">
+          Upload Valid Rows
+        </button>
+        <p id="bulkMsg" class="msg"></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'https://price-check-webhook.onrender.com';
+    let catalogProducts = [];
+    let catalogLocations = [];
+    let parsedValidRows = [];
+
+    function getToken() {
+      return localStorage.getItem('shopManagerToken');
+    }
+
+    async function loadShopsForLogin() {
+      const sel = document.getElementById('loginShopSelect');
+      try {
+        // Uses existing public/portal shops endpoint if available; falls back gracefully
+        const res = await fetch(`${API_BASE}/api/shops`);
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.shops || []);
+        if (list.length > 0) {
+          sel.innerHTML = '<option value="">-- Choose Shop --</option>' + list.map(s => {
+            const id = s.id;
+            const name = s.fields?.['Shop Name'] || s.shopName || s.name || id;
+            return `<option value="${id}">${name}</option>`;
+          }).join('');
+        } else {
+          sel.innerHTML = '<option value="">No shops returned</option>';
+        }
+      } catch (err) {
+        sel.innerHTML = '<option value="">Unable to load shops — enter Shop Record ID</option>';
+      }
+    }
+
+    document.getElementById('shopLoginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('loginBtn');
+      const msg = document.getElementById('loginMsg');
+      btn.disabled = true;
+      msg.className = 'msg';
+      msg.textContent = 'Verifying shop PIN...';
+
+      const shopId = document.getElementById('loginShopSelect').value.trim();
+      const pin = document.getElementById('loginPin').value.trim();
+
+      try {
+        const res = await fetch(`${API_BASE}/api/shop/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ shopId, pin })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          msg.className = 'msg err';
+          msg.textContent = data.message || 'Login failed.';
+          return;
+        }
+        localStorage.setItem('shopManagerToken', data.token);
+        localStorage.setItem('shopManagerName', data.shopName || 'Shop');
+        enterPortal(data.shopName);
+      } catch (err) {
+        msg.className = 'msg err';
+        msg.textContent = 'Network error signing in.';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    function logoutShop() {
+      localStorage.removeItem('shopManagerToken');
+      localStorage.removeItem('shopManagerName');
+      document.getElementById('portalSection').style.display = 'none';
+      document.getElementById('loginSection').style.display = 'block';
+    }
+
+    async function enterPortal(shopName) {
+      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('portalSection').style.display = 'block';
+      const label = shopName || localStorage.getItem('shopManagerName') || 'Shop';
+      document.getElementById('activeShopHeading').textContent = `${label} — Price Capture`;
+      document.getElementById('activeShopBadge').textContent = `Scoped Session: ${label}`;
+      await loadCatalogAndLocations();
+    }
+
+    async function loadCatalogAndLocations() {
+      const res = await fetch(`${API_BASE}/api/shop/products`, {
+        headers: { 'Authorization': `Bearer ${getToken()}` }
+      });
+      if (res.status === 401 || res.status === 403) {
+        logoutShop();
+        return;
+      }
+      const data = await res.json();
+      if (!data.success) return;
+
+      catalogProducts = data.products || [];
+      catalogLocations = data.locations || [];
+
+      const dl = document.getElementById('productDatalist');
+      dl.innerHTML = catalogProducts.map(p => {
+        const parts = [p.productName, p.brand, p.size, p.flavour].filter(Boolean).join(' | ');
+        return `<option value="${parts}" data-id="${p.id}"></option>`;
+      }).join('');
+
+      const locSel = document.getElementById('locationSelect');
+      locSel.innerHTML = '<option value="">-- Select Location --</option>' + catalogLocations.map(l => {
+        const desc = [l.city, l.subLocation].filter(Boolean).join(' - ') || l.id;
+        return `<option value="${l.id}">${desc}</option>`;
+      }).join('');
+    }
+
+    function onProductSearchInput() {
+      const val = document.getElementById('productSearchInput').value.trim();
+      const match = catalogProducts.find(p => {
+        const label = [p.productName, p.brand, p.size, p.flavour].filter(Boolean).join(' | ');
+        return label === val || p.productName.toLowerCase() === val.toLowerCase();
+      });
+      if (match) {
+        document.getElementById('selectedProductId').value = match.id;
+        document.getElementById('productName').value = match.productName;
+        document.getElementById('category').value = match.category;
+        document.getElementById('brand').value = match.brand;
+        document.getElementById('size').value = match.size;
+        document.getElementById('flavour').value = match.flavour;
+        document.getElementById('newItemCheckbox').checked = false;
+        setCatalogFieldsReadonly(true);
+      }
+    }
+
+    function handleNewItemToggle() {
+      const isNew = document.getElementById('newItemCheckbox').checked;
+      if (isNew) {
+        document.getElementById('selectedProductId').value = '';
+        document.getElementById('productSearchInput').value = '';
+        setCatalogFieldsReadonly(false);
+      } else if (document.getElementById('selectedProductId').value) {
+        setCatalogFieldsReadonly(true);
+      }
+    }
+
+    function setCatalogFieldsReadonly(readonly) {
+      ['productName', 'category', 'brand', 'size', 'flavour'].forEach(id => {
+        document.getElementById(id).readOnly = readonly;
+      });
+    }
+
+    function onLocationChange() {
+      const locId = document.getElementById('locationSelect').value;
+      const loc = catalogLocations.find(l => l.id === locId);
+      if (loc) {
+        if (loc.city) document.getElementById('city').value = loc.city;
+        if (loc.subLocation) document.getElementById('subLocation').value = loc.subLocation;
+      }
+    }
+
+    function switchMode(mode) {
+      const isSingle = mode === 'single';
+      document.getElementById('singleModePanel').style.display = isSingle ? 'block' : 'none';
+      document.getElementById('bulkModePanel').style.display = isSingle ? 'none' : 'block';
+    }
+
+    document.getElementById('singlePriceForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('savePriceBtn');
+      const msg = document.getElementById('singleMsg');
+      btn.disabled = true;
+      msg.className = 'msg';
+      msg.textContent = 'Saving price...';
+
+      const payload = {
+        productId: document.getElementById('selectedProductId').value || null,
+        productName: document.getElementById('productName').value.trim(),
+        category: document.getElementById('category').value.trim(),
+        brand: document.getElementById('brand').value.trim(),
+        size: document.getElementById('size').value.trim(),
+        flavour: document.getElementById('flavour').value.trim(),
+        unit: document.getElementById('unit').value.trim(),
+        locationId: document.getElementById('locationSelect').value || null,
+        city: document.getElementById('city').value.trim(),
+        subLocation: document.getElementById('subLocation').value.trim(),
+        priceUsd: parseFloat(document.getElementById('priceUsd').value),
+        availability: document.getElementById('availability').value
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/api/shop/prices`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getToken()}`
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        msg.className = `msg ${data.success ? 'ok' : 'err'}`;
+        msg.textContent = data.message;
+        if (data.success) {
+          document.getElementById('priceUsd').value = '';
+          document.getElementById('productSearchInput').value = '';
+          document.getElementById('selectedProductId').value = '';
+          setCatalogFieldsReadonly(false);
+          await loadCatalogAndLocations();
+        }
+      } catch (err) {
+        msg.className = 'msg err';
+        msg.textContent = 'Network error saving price.';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    function downloadSampleCsv() {
+      const sample = [
+        'productName,category,brand,size,flavour,unit,locationId,city,subLocation,priceUsd,availability',
+        'White Sugar,Pantry & Baking,Gold Star,2,,kg,,Harare,CBD,3.49,In Stock'
+      ].join('\n');
+      const blob = new Blob([sample], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'pricecheck-bulk-template.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function handleCsvFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const lines = e.target.result.split(/\r?\n/).filter(l => l.trim() !== '');
+        parsedValidRows = [];
+
+        let html = '<table><thead><tr><th>#</th><th>Product</th><th>Brand</th><th>Size/Unit</th><th>City / Sub</th><th>Price USD</th><th>Status</th></tr></thead><tbody>';
+
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(',').map(c => (c || '').trim());
+          const [productName, category, brand, size, flavour, unit, locationId, city, subLocation, priceStr, availability] = cols;
+          const priceUsd = parseFloat(priceStr);
+          const valid = Boolean(productName && unit && city && Number.isFinite(priceUsd) && priceUsd > 0);
+
+          if (valid) {
+            parsedValidRows.push({
+              productName, category, brand, size, flavour, unit,
+              locationId: locationId || null,
+              city, subLocation, priceUsd,
+              availability: availability || 'In Stock'
+            });
+          }
+
+          html += `<tr class="${valid ? '' : 'row-err'}">
+            <td>${i}</td>
+            <td>${productName || 'Missing'}</td>
+            <td>${brand || '-'}</td>
+            <td>${[size, unit].filter(Boolean).join(' ') || 'Missing'}</td>
+            <td>${[city, subLocation].filter(Boolean).join(' / ') || 'Missing'}</td>
+            <td>${Number.isFinite(priceUsd) ? priceUsd.toFixed(2) : 'Invalid'}</td>
+            <td>${valid ? 'Valid' : 'Invalid (Skipped)'}</td>
+          </tr>`;
+        }
+
+        html += '</tbody></table>';
+        document.getElementById('csvPreviewBox').innerHTML = html;
+
+        const btn = document.getElementById('uploadBulkBtn');
+        btn.disabled = parsedValidRows.length === 0;
+        btn.style.opacity = parsedValidRows.length > 0 ? '1' : '0.5';
+        btn.textContent = `Upload ${parsedValidRows.length} Valid Row(s)`;
+      };
+      reader.readAsText(file);
+    }
+
+    async function uploadValidCsvRows() {
+      const btn = document.getElementById('uploadBulkBtn');
+      const msg = document.getElementById('bulkMsg');
+      btn.disabled = true;
+      msg.className = 'msg';
+      msg.textContent = 'Uploading bulk rows...';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/shop/prices/bulk`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getToken()}`
+          },
+          body: JSON.stringify({ rows: parsedValidRows })
+        });
+        const data = await res.json();
+        msg.className = `msg ${data.success ? 'ok' : 'err'}`;
+        msg.textContent = data.message + (data.errors?.length ? ` | Errors: ${data.errors.join('; ')}` : '');
+        if (data.success) {
+          await loadCatalogAndLocations();
+        }
+      } catch (err) {
+        msg.className = 'msg err';
+        msg.textContent = 'Network error during bulk upload.';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      await loadShopsForLogin();
+      if (getToken()) {
+        await enterPortal(localStorage.getItem('shopManagerName'));
+      }
+    });
+  </script>
+</body>
+</html>

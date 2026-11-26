@@ -1069,6 +1069,78 @@ app.patch('/api/admin/system-users/:id', verifyAdminKey, async (req, res) => {
 });
 
 
+
+
+//added 271126:::::::::::::::::::::::::
+const SHOP_JWT_SECRET = process.env.SHOP_JWT_SECRET || 'change-this-shop-secret-in-render';
+const MAX_FAILED_ATTEMPTS = 5;
+
+function verifyShopManager(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) {
+        return res.status(401).json({ success: false, message: 'Missing shop session token.' });
+    }
+    try {
+        const decoded = jwt.verify(token, SHOP_JWT_SECRET);
+        req.shopId = decoded.shopId;
+        req.shopName = decoded.shopName;
+        next();
+    } catch (err) {
+        return res.status(403).json({ success: false, message: 'Session expired or invalid. Please log in again.' });
+    }
+}
+
+app.post('/api/shop/login', async (req, res) => {
+    try {
+        const { shopId, pin } = req.body;
+        if (!shopId || !pin) {
+            return res.status(400).json({ success: false, message: 'Shop and PIN are required.' });
+        }
+
+        const shop = await base('Shops').find(shopId);
+        const status = shop.get('Status') || 'Active';
+        const failedAttempts = Number(shop.get('Failed Attempts') || 0);
+
+        if (status === 'Locked') {
+            return res.status(423).json({
+                success: false,
+                message: 'Shop account is locked due to failed PIN attempts. Contact Admin to unlock.'
+            });
+        }
+
+        const storedPin = String(shop.get('PIN') || '');
+        if (String(pin).trim() !== storedPin) {
+            const nextAttempts = failedAttempts + 1;
+            const shouldLock = nextAttempts >= MAX_FAILED_ATTEMPTS;
+
+            await base('Shops').update(shopId, {
+                'Failed Attempts': nextAttempts,
+                ...(shouldLock ? { 'Status': 'Locked' } : {})
+            });
+
+            return res.status(401).json({
+                success: false,
+                message: shouldLock
+                    ? 'Account locked after too many failed attempts. Contact Admin.'
+                    : `Invalid PIN. ${MAX_FAILED_ATTEMPTS - nextAttempts} attempt(s) remaining.`
+            });
+        }
+
+        if (failedAttempts > 0) {
+            await base('Shops').update(shopId, { 'Failed Attempts': 0 });
+        }
+
+        const shopName = shop.get('Shop Name');
+        const token = jwt.sign({ shopId: shop.id, shopName }, SHOP_JWT_SECRET, { expiresIn: '8h' });
+
+        return res.json({ success: true, token, shopName });
+    } catch (err) {
+        console.error('Shop login error:', err);
+        return res.status(500).json({ success: false, message: 'Server error during login.' });
+    }
+});
+
 function normPart(val, fallback = 'none') {
     const cleaned = String(val ?? '')
         .trim()

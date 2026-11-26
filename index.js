@@ -9,7 +9,17 @@ const multer = require('multer');
 const FormData = require('form-data');
 const crypto = require('crypto');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 
+"dependencies": {
+  "express": "^4.18.2",
+  "airtable": "^0.12.2",
+  "resend": "^3.0.0",
+  "multer": "^1.4.5-lts.1",
+  "form-data": "^4.0.0",
+  "cors": "^2.8.5",
+  "jsonwebtoken": "^9.0.2"
+}
 
 // 1. Initialize Express App ONCE
 const app = express();

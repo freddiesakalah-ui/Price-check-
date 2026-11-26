@@ -1375,4 +1375,7 @@ app.post('/api/shop/prices', verifyShopManager, async (req, res) => {
 // =========================================================================
 // 6. SERVER LISTEN
 // =========================================================================
-app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server listening on port ${PORT}`);
+});

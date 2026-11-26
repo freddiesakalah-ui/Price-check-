@@ -1065,6 +1065,313 @@ app.patch('/api/admin/system-users/:id', verifyAdminKey, async (req, res) => {
         res.status(500).json({ success: false, error: err.message });
     }
 });
+
+
+function normPart(val, fallback = 'none') {
+    const cleaned = String(val ?? '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ');
+    return cleaned || fallback;
+}
+
+function buildCompositePriceKey({
+    shopId,
+    locationId,
+    subLocation,
+    productId,
+    flavour,
+    unit,
+    size,
+    brand,
+    city
+}) {
+    return [
+        `shop:${normPart(shopId, '')}`,
+        `loc:${normPart(locationId, '')}`,
+        `sub:${normPart(subLocation)}`,
+        `prod:${normPart(productId, '')}`,
+        `flav:${normPart(flavour)}`,
+        `unit:${normPart(unit)}`,
+        `size:${normPart(size)}`,
+        `brand:${normPart(brand)}`,
+        `city:${normPart(city)}`
+    ].join('|');
+}
+
+async function resolveBrandRecord(brandName) {
+    const trimmed = String(brandName || '').trim();
+    if (!trimmed) return { id: null, name: '' };
+
+    const escaped = trimmed.replace(/'/g, "\\'");
+    const existing = await base('Brands')
+        .select({
+            filterByFormula: `LOWER({Brand Name}) = '${escaped.toLowerCase()}'`,
+            maxRecords: 1
+        })
+        .firstPage();
+
+    if (existing.length > 0) {
+        return { id: existing[0].id, name: existing[0].get('Brand Name') || trimmed };
+    }
+
+    const created = await base('Brands').create({ 'Brand Name': trimmed });
+    return { id: created.id, name: trimmed };
+}
+
+async function resolveLocationContext(locationId, fallbackCity, fallbackSubLocation) {
+    let city = String(fallbackCity || '').trim();
+    let subLocation = String(fallbackSubLocation || '').trim();
+
+    if (locationId) {
+        const locRec = await base('Locations').find(locationId);
+        city = city || String(locRec.get('city') || '').trim();
+        subLocation = subLocation || String(locRec.get('sub_location') || '').trim();
+    }
+
+    return { locationId: locationId || null, city, subLocation };
+}
+
+async function resolveOrCreateProductRecord({
+    productId,
+    productName,
+    category,
+    brandInfo,
+    size,
+    flavour
+}) {
+    if (productId) {
+        const existingRec = await base('Products').find(productId);
+        return {
+            id: existingRec.id,
+            name: existingRec.get('Product') || productName || '',
+            size: size || existingRec.get('Size') || '',
+            flavour: flavour || existingRec.get('Flavour') || '',
+            brandName: brandInfo.name || ''
+        };
+    }
+
+    const cleanName = String(productName || '').trim();
+    if (!cleanName) {
+        throw new Error('Product name or existing product selection is required.');
+    }
+
+    const cleanSize = String(size || '').trim();
+    const cleanFlavour = String(flavour || '').trim();
+    const escapedName = cleanName.replace(/'/g, "\\'");
+
+    const matches = await base('Products')
+        .select({
+            filterByFormula: `AND(LOWER({Product}) = '${escapedName.toLowerCase()}', LOWER(TRIM({Size} & '')) = '${cleanSize.toLowerCase()}', LOWER(TRIM({Flavour} & '')) = '${cleanFlavour.toLowerCase()}')`,
+            maxRecords: 1
+        })
+        .firstPage();
+
+    if (matches.length > 0) {
+        const rec = matches[0];
+        return {
+            id: rec.id,
+            name: rec.get('Product') || cleanName,
+            size: cleanSize || rec.get('Size') || '',
+            flavour: cleanFlavour || rec.get('Flavour') || '',
+            brandName: brandInfo.name || ''
+        };
+    }
+
+    const fields = {
+        'Product': cleanName,
+        'Category': String(category || 'General').trim(),
+        'Size': cleanSize,
+        'Flavour': cleanFlavour,
+        'Active': true
+    };
+    if (brandInfo.id) {
+        fields['Brand (Link)'] = [brandInfo.id];
+    }
+
+    const created = await base('Products').create(fields);
+    return {
+        id: created.id,
+        name: cleanName,
+        size: cleanSize,
+        flavour: cleanFlavour,
+        brandName: brandInfo.name || ''
+    };
+}
+
+async function logPriceHistory({
+    shopId,
+    productId,
+    locationId,
+    previousPrice,
+    newPrice,
+    currency,
+    source,
+    changedAt
+}) {
+    const fields = {
+        'Shop': [shopId],
+        'Product': [productId],
+        'Previous Price': previousPrice,
+        'New Price': newPrice,
+        'Currency': currency || 'USD',
+        'Source': source || 'Single Form',
+        'Changed At': changedAt
+    };
+    if (locationId) {
+        fields['Location'] = [locationId];
+    }
+    await base('Price_History').create(fields);
+}
+
+async function upsertShopPriceRecord({
+    shopId,
+    locationId,
+    subLocation,
+    productId,
+    productName,
+    category,
+    brand,
+    size,
+    flavour,
+    unit,
+    city,
+    priceUsd,
+    currency = 'USD',
+    availability = 'In Stock',
+    source = 'Single Form'
+}) {
+    const numericPrice = Number(priceUsd);
+    if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
+        throw new Error('Price USD must be a valid number greater than 0.');
+    }
+
+    const brandInfo = await resolveBrandRecord(brand);
+    const locCtx = await resolveLocationContext(locationId, city, subLocation);
+    const prodInfo = await resolveOrCreateProductRecord({
+        productId,
+        productName,
+        category,
+        brandInfo,
+        size,
+        flavour
+    });
+
+    const compositeKey = buildCompositePriceKey({
+        shopId,
+        locationId: locCtx.locationId,
+        subLocation: locCtx.subLocation,
+        productId: prodInfo.id,
+        flavour: prodInfo.flavour,
+        unit,
+        size: prodInfo.size,
+        brand: prodInfo.brandName,
+        city: locCtx.city
+    });
+
+    const escapedKey = compositeKey.replace(/'/g, "\\'");
+    const existingPrices = await base('Prices')
+        .select({
+            filterByFormula: `{Price Key} = '${escapedKey}'`,
+            maxRecords: 1
+        })
+        .firstPage();
+
+    const nowIso = new Date().toISOString();
+    const todayDate = nowIso.slice(0, 10);
+
+    const commonFields = {
+        'Shop': [shopId],
+        'Product': [prodInfo.id],
+        'Price USD': numericPrice,
+        'Availability': availability,
+        'Outdated Flag': false,
+        'city': locCtx.city,
+        'Unit': String(unit || '').trim(),
+        'Flavour': prodInfo.flavour,
+        'Brand': prodInfo.brandName,
+        'Status': 'Active',
+        'Last Modified': nowIso,
+        'Price Key': compositeKey,
+        'Price Data': JSON.stringify({
+            priceUsd: numericPrice,
+            currency,
+            unit: String(unit || '').trim(),
+            size: prodInfo.size,
+            flavour: prodInfo.flavour,
+            brand: prodInfo.brandName,
+            city: locCtx.city,
+            subLocation: locCtx.subLocation,
+            updatedAt: nowIso
+        })
+    };
+
+    if (locCtx.locationId) {
+        commonFields['Location'] = [locCtx.locationId];
+    }
+
+    let previousPrice = null;
+    let priceRecordId = null;
+
+    if (existingPrices.length > 0) {
+        const currentRec = existingPrices[0];
+        priceRecordId = currentRec.id;
+        previousPrice = Number(currentRec.get('Price USD') ?? 0);
+
+        await base('Prices').update(priceRecordId, commonFields);
+    } else {
+        const createdPrice = await base('Prices').create({
+            ...commonFields,
+            'Submission Date': todayDate
+        });
+        priceRecordId = createdPrice.id;
+    }
+
+    if (previousPrice === null || previousPrice !== numericPrice) {
+        await logPriceHistory({
+            shopId,
+            productId: prodInfo.id,
+            locationId: locCtx.locationId,
+            previousPrice,
+            newPrice: numericPrice,
+            currency,
+            source,
+            changedAt: nowIso
+        });
+    }
+
+    return {
+        priceRecordId,
+        productId: prodInfo.id,
+        compositeKey,
+        previousPrice,
+        newPrice: numericPrice
+    };
+}
+
+// Authenticated shop manager endpoint
+app.post('/api/shop/prices', verifyShopManager, async (req, res) => {
+    try {
+        const result = await upsertShopPriceRecord({
+            shopId: req.shopId,
+            ...req.body,
+            source: 'Single Form'
+        });
+
+        return res.json({
+            success: true,
+            message: 'Shop price saved successfully.',
+            data: result
+        });
+    } catch (err) {
+        console.error('Error in POST /api/shop/prices:', err);
+        return res.status(400).json({
+            success: false,
+            message: err.message || 'Failed to save shop price.'
+        });
+    }
+});
+
 // =========================================================================
 // 6. SERVER LISTEN
 // =========================================================================

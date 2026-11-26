@@ -81,14 +81,19 @@
     <!-- LOGIN VIEW -->
     <div id="loginSection">
       <h1>Shop Manager Sign In</h1>
-      <p style="color:#94a3b8;">Sign in with your assigned shop and PIN to capture and update prices.</p>
+      <p style="color:#94a3b8;">Sign in with your assigned shop (or paste its Shop Record ID) and PIN to capture and update prices.</p>
       <form id="shopLoginForm">
         <div class="row-grid">
           <div>
-            <label for="loginShopSelect">Shop</label>
-            <select id="loginShopSelect" required>
-              <option value="">Loading shops...</option>
-            </select>
+            <label for="loginShopSelect">Shop (Select or paste Record ID)</label>
+            <input
+              type="text"
+              id="loginShopSelect"
+              list="loginShopDatalist"
+              placeholder="Select shop or paste recXXXXXXXXXXXXXX"
+              required
+            />
+            <datalist id="loginShopDatalist"></datalist>
           </div>
           <div>
             <label for="loginPin">Shop PIN</label>
@@ -221,23 +226,22 @@
     }
 
     async function loadShopsForLogin() {
-      const sel = document.getElementById('loginShopSelect');
+      const dl = document.getElementById('loginShopDatalist');
+      const input = document.getElementById('loginShopSelect');
       try {
-        // Uses existing public/portal shops endpoint if available; falls back gracefully
         const res = await fetch(`${API_BASE}/api/shops`);
         const data = await res.json();
         const list = Array.isArray(data) ? data : (data.shops || []);
-        if (list.length > 0) {
-          sel.innerHTML = '<option value="">-- Choose Shop --</option>' + list.map(s => {
+        if (list.length > 0 && dl) {
+          dl.innerHTML = list.map(s => {
             const id = s.id;
             const name = s.fields?.['Shop Name'] || s.shopName || s.name || id;
             return `<option value="${id}">${name}</option>`;
           }).join('');
-        } else {
-          sel.innerHTML = '<option value="">No shops returned</option>';
         }
+        input.placeholder = 'Select shop or paste recXXXXXXXXXXXXXX';
       } catch (err) {
-        sel.innerHTML = '<option value="">Unable to load shops — enter Shop Record ID</option>';
+        input.placeholder = 'Paste Shop Record ID (e.g. recXXXXXXXXXXXXXX)';
       }
     }
 

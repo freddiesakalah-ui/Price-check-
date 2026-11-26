@@ -1289,7 +1289,7 @@ async function upsertShopPriceRecord({
         'city': locCtx.city,
         'Unit': String(unit || '').trim(),
         'Flavour': prodInfo.flavour,
-        'Brand': prodInfo.brandName,
+        // Do NOT set 'Brand' directly—it is a Lookup field in Airtable
         'Status': 'Active',
         'Last Modified': nowIso,
         'Price Key': compositeKey,

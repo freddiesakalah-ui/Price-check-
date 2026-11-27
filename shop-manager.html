@@ -391,7 +391,7 @@
         locationId: document.getElementById('locationSelect').value || null,
         city: document.getElementById('city').value.trim(),
         subLocation: document.getElementById('subLocation').value.trim(),
-        priceUsd: parseFloat(document.getElementById('priceUsd').value),
+        priceUsd: parseFloat(String(document.getElementById('priceUsd').value).replace(',', '.')),
         availability: document.getElementById('availability').value
       };
 

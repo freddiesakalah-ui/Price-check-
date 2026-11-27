@@ -183,7 +183,7 @@ function buildCompositePriceKey({
     productId,
     flavour,
     unit,
-    size,
+   // Disable the field "size 271126 13:00 " size,
     brand,
     city
 }) {
@@ -194,7 +194,7 @@ function buildCompositePriceKey({
         `prod:${normPart(productId, '')}`,
         `flav:${normPart(flavour)}`,
         `unit:${normPart(unit)}`,
-        `size:${normPart(size)}`,
+       // Disable the field "size 271126 13:00 " `size:${normPart(size)}`,
         `brand:${normPart(brand)}`,
         `city:${normPart(city)}`
     ].join('|');
@@ -238,7 +238,7 @@ async function resolveOrCreateProductRecord({
     productName,
     category,
     brandInfo,
-    size,
+ // Disable the field "size 271126 13:00 "   size,
     flavour
 }) {
     if (productId) {
@@ -246,7 +246,7 @@ async function resolveOrCreateProductRecord({
         return {
             id: existingRec.id,
             name: existingRec.get('Product') || productName || '',
-            size: size || existingRec.get('Size') || '',
+           // Disable the field "size 271126 13:00 " size: size || existingRec.get('Size') || '',
             flavour: flavour || existingRec.get('Flavour') || '',
             brandName: brandInfo.name || ''
         };
@@ -257,13 +257,13 @@ async function resolveOrCreateProductRecord({
         throw new Error('Product name or existing product selection is required.');
     }
 
-    const cleanSize = String(size || '').trim();
+  // Disable the field "size 271126 13:00 "  const cleanSize = String(size || '').trim();
     const cleanFlavour = String(flavour || '').trim();
     const escapedName = cleanName.replace(/'/g, "\\'");
 
     const matches = await base('Products')
         .select({
-            filterByFormula: `AND(LOWER({Product}) = '${escapedName.toLowerCase()}', LOWER(TRIM({Size} & '')) = '${cleanSize.toLowerCase()}', LOWER(TRIM({Flavour} & '')) = '${cleanFlavour.toLowerCase()}')`,
+            filterByFormula: `AND(LOWER({Product}) = '${escapedName.toLowerCase()}', LOWER(TRIM({Flavour} & '')) = '${cleanFlavour.toLowerCase()}')`, // Disable the field "size 271126 13:00 "
             maxRecords: 1
         })
         .firstPage();
@@ -273,7 +273,7 @@ async function resolveOrCreateProductRecord({
         return {
             id: rec.id,
             name: rec.get('Product') || cleanName,
-            size: cleanSize || rec.get('Size') || '',
+           // Disable the field "size 271126 13:00 " size: cleanSize || rec.get('Size') || '',
             flavour: cleanFlavour || rec.get('Flavour') || '',
             brandName: brandInfo.name || ''
         };
@@ -282,7 +282,7 @@ async function resolveOrCreateProductRecord({
     const fields = {
         'Product': cleanName,
         'Category': String(category || 'General').trim(),
-        'Size': cleanSize,
+       // Disable the field "size 271126 13:00 " 'Size': cleanSize,
         'Flavour': cleanFlavour,
         'Active': true
     };
@@ -294,7 +294,7 @@ async function resolveOrCreateProductRecord({
     return {
         id: created.id,
         name: cleanName,
-        size: cleanSize,
+       // Disable the field "size 271126 13:00 " size: cleanSize,
         flavour: cleanFlavour,
         brandName: brandInfo.name || ''
     };
@@ -333,7 +333,7 @@ async function upsertShopPriceRecord({
     productName,
     category,
     brand,
-    size,
+    // Disable the field "size 271126 13:00 "size,
     flavour,
     unit,
     city,
@@ -354,7 +354,7 @@ async function upsertShopPriceRecord({
         productName,
         category,
         brandInfo,
-        size,
+       // Disable the field "size 271126 13:00 " size,
         flavour
     });
 
@@ -365,7 +365,7 @@ async function upsertShopPriceRecord({
         productId: prodInfo.id,
         flavour: prodInfo.flavour,
         unit,
-        size: prodInfo.size,
+       // Disable the field "size 271126 13:00 " size: prodInfo.size,
         brand: prodInfo.brandName,
         city: locCtx.city
     });
@@ -398,7 +398,7 @@ async function upsertShopPriceRecord({
             priceUsd: numericPrice,
             currency,
             unit: String(unit || '').trim(),
-            size: prodInfo.size,
+           // Disable the field "size 271126 13:00 " size: prodInfo.size,
             flavour: prodInfo.flavour,
             brand: prodInfo.brandName,
             city: locCtx.city,

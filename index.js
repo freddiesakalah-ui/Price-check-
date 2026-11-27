@@ -79,7 +79,7 @@ function verifyShopManager(req, res, next) {
         return res.status(403).json({ success: false, message: 'Session expired or invalid. Please log in again.' });
     }
 }
-
+//added  27112026:::::
 app.post('/api/shop/login', async (req, res) => {
     try {
         const { shopId, pin } = req.body;
@@ -87,7 +87,45 @@ app.post('/api/shop/login', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Shop and PIN are required.' });
         }
 
-        const shop = await base('Shops').find(shopId);
+        const cleanId = String(shopId).trim();
+        let shop = null;
+
+        if (cleanId.startsWith('rec')) {
+            try {
+                shop = await base('Shops').find(cleanId);
+            } catch (e) {
+                if (e.statusCode !== 404) throw e;
+            }
+        } else {
+            const numericId = Number(cleanId);
+            const formula = Number.isInteger(numericId)
+                ? `{Shop ID} = ${numericId}`
+                : `{Shop ID} = '${cleanId.replace(/'/g, "\\'")}'`;
+
+            const matches = await base('Shops')
+                .select({
+                    filterByFormula: formula,
+                    maxRecords: 1
+                })
+                .firstPage();
+            shop = matches[0] || null;
+        }
+
+        if (!shop) {
+            return res.status(404).json({
+                success: false,
+                message: 'Shop not found. Check the Shop ID or Record ID.'
+            });
+        }
+
+        const isActive = shop.get('Active');
+        if (isActive === false) {
+            return res.status(403).json({
+                success: false,
+                message: 'This shop is inactive. Contact Admin.'
+            });
+        }
+
         const status = shop.get('Status') || 'Active';
         const failedAttempts = Number(shop.get('Failed Attempts') || 0);
 
@@ -98,12 +136,12 @@ app.post('/api/shop/login', async (req, res) => {
             });
         }
 
-        const storedPin = String(shop.get('PIN') || '');
+        const storedPin = String(shop.get('Security PIN') ?? shop.get('PIN') ?? '').trim();
         if (String(pin).trim() !== storedPin) {
             const nextAttempts = failedAttempts + 1;
             const shouldLock = nextAttempts >= MAX_FAILED_ATTEMPTS;
 
-            await base('Shops').update(shopId, {
+            await base('Shops').update(shop.id, {
                 'Failed Attempts': nextAttempts,
                 ...(shouldLock ? { 'Status': 'Locked' } : {})
             });
@@ -112,22 +150,22 @@ app.post('/api/shop/login', async (req, res) => {
                 success: false,
                 message: shouldLock
                     ? 'Account locked after too many failed attempts. Contact Admin.'
-                    : `Invalid PIN. ${MAX_FAILED_ATTEMPTS - nextAttempts} attempt(s) remaining.`
-            });
-        }
-
-        if (failedAttempts > 0) {
-            await base('Shops').update(shopId, { 'Failed Attempts': 0 });
-        }
-
-        const shopName = shop.get('Shop Name');
-        const token = jwt.sign({ shopId: shop.id, shopName }, SHOP_JWT_SECRET, { expiresIn: '8h' });
-
-        return res.json({ success: true, token, shopName });
-    } catch (err) {
-        console.error('Shop login error:', err);
-        return res.status(500).json({ success: false, message: 'Server error during login.' });
+                    :`Invalid PIN. ${MAX_FAILED_ATTEMPTS - nextAttempts} attempt(s) remaining.`
+        });
     }
+
+    if (failedAttempts > 0) {
+        await base('Shops').update(shop.id, { 'Failed Attempts': 0 });
+    }
+
+    const shopName = shop.get('Shop Name') || shop.id;
+    const token = jwt.sign({ shopId: shop.id, shopName }, SHOP_JWT_SECRET, { expiresIn: '8h' });
+
+    return res.json({ success: true, token, shopName });
+} catch (err) {
+    console.error('Shop login error:', err);
+    return res.status(500).json({ success: false, message: 'Server error during login.' });
+}
 });
 
 function normPart(val, fallback = 'none') {

@@ -149,10 +149,7 @@
               <label for="brand">Brand</label>
               <input type="text" id="brand" placeholder="e.g. Gold Star" />
             </div>
-            <div>
-              <label for="size">Size</label>
-              <input type="text" id="size" placeholder="e.g. 2" />
-            </div>
+          //Removed the Size lable Hrere""271124 14:47
             <div>
               <label for="unit">Unit *</label>
               <input type="text" id="unit" placeholder="e.g. kg, g, L, ml, pack" required />
@@ -325,7 +322,7 @@
     function onProductSearchInput() {
       const val = document.getElementById('productSearchInput').value.trim();
       const match = catalogProducts.find(p => {
-        const label = [p.productName, p.brand, p.size, p.flavour].filter(Boolean).join(' | ');
+        const label = [p.productName, p.brand, p.flavour].filter(Boolean).join(' | ');  //removed label for size HERE ::;271126 12:49
         return label === val || p.productName.toLowerCase() === val.toLowerCase();
       });
       if (match) {
@@ -333,7 +330,7 @@
         document.getElementById('productName').value = match.productName;
         document.getElementById('category').value = match.category;
         document.getElementById('brand').value = match.brand;
-        document.getElementById('size').value = match.size;
+       //:::::Disabled  the value of "size" 271124 12:00 :::: document.getElementById('size').value = match.size;
         document.getElementById('flavour').value = match.flavour;
         document.getElementById('newItemCheckbox').checked = false;
         setCatalogFieldsReadonly(true);
@@ -352,7 +349,7 @@
     }
 
     function setCatalogFieldsReadonly(readonly) {
-      ['productName', 'category', 'brand', 'size', 'flavour'].forEach(id => {
+      ['productName', 'category', 'brand','flavour'].forEach(id => {  //Removed the field of "size " here 271126 13:00
         document.getElementById(id).readOnly = readonly;
       });
     }
@@ -385,7 +382,7 @@
         productName: document.getElementById('productName').value.trim(),
         category: document.getElementById('category').value.trim(),
         brand: document.getElementById('brand').value.trim(),
-        size: document.getElementById('size').value.trim(),
+       // Disabled the field of "size"  271126 13:00   size: document.getElementById('size').value.trim(),
         flavour: document.getElementById('flavour').value.trim(),
         unit: document.getElementById('unit').value.trim(),
         locationId: document.getElementById('locationSelect').value || null,
@@ -424,8 +421,8 @@
 
     function downloadSampleCsv() {
       const sample = [
-        'productName,category,brand,size,flavour,unit,locationId,city,subLocation,priceUsd,availability',
-        'White Sugar,Pantry & Baking,Gold Star,2,,kg,,Harare,CBD,3.49,In Stock'
+        'productName,category,brand,flavour,unit,locationId,city,subLocation,priceUsd,availability', //removed the field of "size" 271126 13:00
+        'White Sugar,Pantry & Baking,Gold Star,White,2kg, 1,Harare,CBD,3.49,In Stock' //removed the  value of field of "size" 271126 13:00
       ].join('\n');
       const blob = new Blob([sample], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -455,7 +452,7 @@
 
           if (valid) {
             parsedValidRows.push({
-              productName, category, brand, size, flavour, unit,
+              productName, category, brand, flavour, unit, //Removed the field of "size" 271126 13:00
               locationId: locationId || null,
               city, subLocation, priceUsd,
               availability: availability || 'In Stock'
@@ -466,7 +463,7 @@
             <td>${i}</td>
             <td>${productName || 'Missing'}</td>
             <td>${brand || '-'}</td>
-            <td>${[size, unit].filter(Boolean).join(' ') || 'Missing'}</td>
+            <td>${[size, unit].filter(Boolean).join(' ') || 'Missing'}</td>       //Pending Editing to remove the "size" field 271126 13:00
             <td>${[city, subLocation].filter(Boolean).join(' / ') || 'Missing'}</td>
             <td>${Number.isFinite(priceUsd) ? priceUsd.toFixed(2) : 'Invalid'}</td>
             <td>${valid ? 'Valid' : 'Invalid (Skipped)'}</td>

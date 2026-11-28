@@ -279,18 +279,40 @@ async function resolveOrCreateProductRecord({
         };
     }
 
+  return {
+            id: rec.id,
+            name: rec.get('Product') || cleanName,
+            // Disable the field "size 271126 13:00 " size: cleanSize || rec.get('Size') || '',
+            flavour: cleanFlavour || rec.get('Flavour') || '',
+            brandName: brandInfo.name || ''
+        };
+    }
+
+    // --- PUT THE UPDATED CODE STARTING HERE (replaces lines 282–293) ---
+    const flavourArray = cleanFlavour
+        ? cleanFlavour
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean)
+        : [];
+
     const fields = {
         'Product': cleanName,
         'Category': String(category || 'General').trim(),
-       // Disable the field "size 271126 13:00 " 'Size': cleanSize,
-        'Flavour': cleanFlavour,
+        // Disable the field "size 271126 13:00 " 'Size': cleanSize,
+        ...(flavourArray.length > 0 ? { 'Flavour': flavourArray } : {}),
         'Active': true
     };
     if (brandInfo.id) {
         fields['Brand (Link)'] = [brandInfo.id];
     }
 
-    const created = await base('Products').create(fields);
+    const created = await base('Products').create(fields, { typecast: true });
+    // --- END OF REPLACEMENT (continues into existing return on line 294) ---
+
+    return {
+        id: created.id,
+        name: cleanName,
     return {
         id: created.id,
         name: cleanName,
@@ -333,7 +355,6 @@ async function upsertShopPriceRecord({
     productName,
     category,
     brand,
-    // Disable the field "size 271126 13:00 "size,
     flavour,
     unit,
     city,
@@ -389,7 +410,7 @@ async function upsertShopPriceRecord({
         'Outdated Flag': false,
         'city': locCtx.city,
         'Unit': String(unit || '').trim(),
-        'Flavour': prodInfo.flavour,
+        // Do NOT set 'Flavour' directly—it is a Lookup field in Airtable 'Flavour': prodInfo.flavour, 281126 10:34AM
         // Do NOT set 'Brand' directly—it is a Lookup field in Airtable
         'Status': 'Active',
         'Last Modified': nowIso,

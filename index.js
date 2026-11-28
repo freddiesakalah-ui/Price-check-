@@ -286,9 +286,7 @@ async function resolveOrCreateProductRecord({
             flavour: cleanFlavour || rec.get('Flavour') || '',
             brandName: brandInfo.name || ''
         };
-    }
-
-    // --- PUT THE UPDATED CODE STARTING HERE (replaces lines 282–293) ---
+    
     const flavourArray = cleanFlavour
         ? cleanFlavour
             .split(',')
